@@ -1,0 +1,205 @@
+/* core.css — 共用樣式（舊版 raw_source/typing-adj-single.html 那一套；各頁有差異時以 typing 為準）
+   ─ 顏色變數與深色模式、字體
+   ─ 工具列 .bar ／ 分段按鈕 .seg ／ 開關 .chip ／ 原生下拉 .sel
+   ─ 計分列 .hud ／ 題目區 .stage ／ 小標 .tag ／ 大字題目 .big、.prompt ／ 鍵盤區 .kbwrap ／ 來源 .credit
+   ─ 玩法畫面骨架（app.js 產生的 .jpplay）、範圍小面板、選範圍元件（picker.js 的 .pick）
+   ─ 成績畫面（JP_UI.result 的 .result）
+   玩法專屬的元件（選項按鈕、方塊…）照舊版的數值寫在玩法檔裡（JP_UI.css），不放這裡。
+   用法說明見 js/core/UI-說明.md。 */
+:root{
+  --paper:#f3f4ef; --card:#ffffff; --ink:#1b2430; --muted:#6a7482; --line:#d8dbd4;
+  --blue:#1c5fd6; --ok:#23805a; --bad:#cf4028; --okbg:#e2f3ea; --badbg:#fbe6e1; --key:#ffffff; --key2:#dfe2dc;
+  --soft:#e7eaf3; --selbg:#eaf1fd; --onblue:#fff;
+  --jp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  --ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+    --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --okbg:#173326; --badbg:#3b1d17; --key:#2a323b; --key2:#1d232a;
+    --soft:#232b36; --selbg:#1b2a42; --onblue:#0d1420;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+  --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --okbg:#173326; --badbg:#3b1d17; --key:#2a323b; --key2:#1d232a;
+  --soft:#232b36; --selbg:#1b2a42; --onblue:#0d1420;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:16px;touch-action:manipulation;-webkit-text-size-adjust:100%}
+body.playing{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button,select{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ── 工具列 ── */
+.bar{display:flex;flex-wrap:wrap;gap:6px 8px;padding:8px 16px;align-items:center;border-bottom:1px solid var(--line)}
+.bar .sp{flex:1}
+.bar .ttl{font-size:16px;font-weight:700}
+.bar a.home{color:var(--muted);text-decoration:none;font-size:14px;white-space:nowrap}
+.bar a.home:hover{color:var(--ink)}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:6px 10px;font-size:14px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:700}
+.seg button:disabled{opacity:.4;cursor:default}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:6px 10px;font-size:14px;white-space:nowrap;color:var(--ink);text-decoration:none;display:inline-block}
+.chip[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);font-weight:700}
+.chip:disabled{opacity:.45;cursor:default}
+.sel{font:inherit;font-size:14px;font-weight:700;color:var(--ink);background:var(--card);border:1px solid var(--muted);border-radius:9px;padding:6px 8px;max-width:100%}
+/* 電腦／手機用不同元件或文字：兩套都建好，依寬度顯示其一（例：手機把分段按鈕換成下拉、chip 用短字） */
+@media (min-width:561px){.narrowonly{display:none!important}}
+@media (max-width:560px){.wideonly{display:none!important}}
+
+/* ── 計分列 ── */
+.hud{display:flex;gap:10px;padding:8px 16px;font-variant-numeric:tabular-nums;justify-content:space-between;max-width:760px;width:100%;margin:0 auto}
+.hud div{display:flex;flex-direction:column;line-height:1.15}
+.hud small{color:var(--muted);font-size:12px}
+.hud b{font-size:19px}
+
+/* ── 題目區 ── */
+.stage{flex:1;min-height:0;overflow:auto;padding:8px 16px}
+.stage.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}   /* 一次一題、置中（打字） */
+.inner{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}                                        /* 置中的窄欄（測驗、清單） */
+.tag{color:var(--muted);font-size:14px}
+.big{font-family:var(--jp);font-weight:700;font-size:clamp(32px,8.4vw,60px);line-height:1.9;text-wrap:balance;max-width:100%}
+.nofuri .big{line-height:1.45}
+.prompt{font-weight:700;line-height:1.35;text-wrap:balance}
+.prompt.jp{font-family:var(--jp);font-size:clamp(32px,8vw,54px);line-height:1.9}
+.prompt.zh{font-size:clamp(26px,6.4vw,40px)}
+.zh:not(.prompt),.sub{color:var(--muted);font-size:17px}   /* 灰色中文；測驗題目 .prompt.zh 是黑色大字，不套這條 */
+.count{color:var(--muted);font-size:14px}
+.msg{color:var(--muted);text-align:center;padding:24px 8px}
+.msg.bad{color:var(--bad)}
+
+/* ── 日文（JP_TEXT.html 的輸出）── */
+.jp{font-family:var(--jp)}
+.g{color:var(--blue)}
+ruby{ruby-position:over}
+rt{font-size:.42em;font-weight:500;color:var(--muted);font-family:var(--jp);letter-spacing:0}
+.g rt{color:var(--blue)}
+.nofuri rt{display:none}
+.furihold rt{visibility:hidden}
+.blank{display:inline-block;min-width:2.2em;border-bottom:4px solid var(--blue);color:var(--blue);margin:0 .08em}
+
+/* ── 底部：來源、鍵盤 ── */
+.credit{font-size:12px;color:var(--muted);text-align:center;padding:4px 16px 6px}
+.credit a{color:inherit}
+.kbwrap{background:var(--key2);padding:7px 6px calc(7px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.kbwrap .kbw{background:none;border-radius:0;padding:0}
+
+/* ── 大按鈕（結束畫面、少數確認用；工具列請用 .chip／.seg）── */
+.go{background:var(--blue);color:var(--onblue);border:0;border-radius:11px;padding:12px 20px;font-size:17px;font-weight:700}
+.go.alt{background:none;color:var(--blue);border:1px solid var(--blue)}
+.go:disabled{opacity:.45;cursor:default}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:9px 16px;border-radius:11px;font-size:15px;z-index:60;max-width:calc(100% - 32px);text-align:center;box-shadow:0 8px 24px -10px rgba(0,0,0,.5)}
+
+/* ── 玩法畫面骨架（app.js 產生）：.bar → .hud → .stage → .credit → .foot，一個螢幕高 ── */
+.jpplay{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;background:var(--paper);padding-top:env(safe-area-inset-top,0px)}
+.jpplay>.bar .nav{display:contents}
+.jpplay>.bar .tools{display:contents}
+.jpplay .back{font-size:14px}
+.jpplay .scopechip{max-width:min(46vw,320px);overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.jpplay .scopechip[aria-expanded="true"]{border-color:var(--blue);color:var(--blue)}
+.jpplay>.stage>.act{min-height:100%}
+.jpplay>.stage.mid>.act{min-height:0;width:100%}
+.jpplay>.foot:empty{display:none}
+@media (max-width:560px){
+  .bar{padding:8px 12px}
+  .jpplay .back .t{display:none}
+  .jpplay .scopechip{max-width:8.5em}   /* 手機：只留課程名、太長就省略號（完整文字在 title），題目區才不會被工具列擠掉 */
+  .jpplay .scopechip .k{display:none}
+}
+
+/* 範圍小面板：大螢幕從工具列下方彈出，手機是底部抽屜 */
+.popback{position:fixed;inset:0;z-index:40;background:rgba(10,14,20,.28)}
+.popbox{position:fixed;z-index:41;top:calc(52px + env(safe-area-inset-top,0px));left:16px;width:min(600px,calc(100vw - 32px));max-height:calc(100vh - 80px);max-height:calc(100dvh - 80px);
+  display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 48px -18px rgba(0,0,0,.5)}
+.popbox .pbody{overflow:auto;min-height:0}
+.popbox .pfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.popbox .pfoot .sp{flex:1}
+.popbox .pfoot .why{flex:1 1 100%;color:var(--bad);font-size:13px;margin:0}
+.popbox .pfoot .go{padding:8px 18px;font-size:15px}
+.popbox .pfoot .chip{padding:8px 14px;font-size:15px}
+.popbox .pick{border:0;border-radius:14px 14px 0 0}
+@media (max-width:560px){
+  .popbox{top:auto;bottom:0;left:0;width:100%;max-height:88vh;max-height:88dvh;border-radius:14px 14px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+
+/* ── 選範圍元件（picker.js）：設計稿 docs/設計稿/n5-首頁.html ── */
+.pick{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.prow{display:grid;grid-template-columns:84px minmax(0,1fr);gap:6px 12px;align-items:start;padding:14px 16px}
+.prow+.prow{border-top:1px solid var(--line)}
+.plb{color:var(--muted);font-size:14px;padding-top:8px;white-space:nowrap}
+.plb .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:12px;font-weight:700;margin-right:6px}
+.psel{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:17px;font-weight:700;max-width:100%;width:340px}
+.phint{color:var(--muted);font-size:13px;margin:6px 0 0}
+.phint.perr{color:var(--bad)}
+.pnote{margin:8px 4px 0}
+.parea>.seg{display:inline-flex}
+.parea>.seg button{padding:6px 12px;font-size:15px}
+.caps{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cap{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:15px}
+.cap small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.cap .car{font-size:11px}
+.cap.all{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:700}
+.cap.all small{color:inherit;opacity:.75}
+.cap.capall{font-weight:700}
+.cap.capall[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.cap.part{border-color:var(--blue);color:var(--blue);font-weight:700}
+.cap.open{box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 25%,transparent)}
+.cap.open .car{display:inline-block;transform:rotate(180deg)}
+.upanel{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--paper)}
+.upanel .ph{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;font-size:14px}
+.upanel .ph b{flex:1}
+.upanel .ph b small{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums;margin-left:4px}
+.ulist{display:flex;flex-wrap:wrap;gap:6px}
+.ubtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;font-size:15px;text-align:left}
+.ubtn small{color:var(--muted);font-size:12px;margin-left:4px;font-variant-numeric:tabular-nums}
+.ubtn .uopt{font-style:normal;font-size:11px;font-weight:700;border:1px solid currentColor;border-radius:99px;padding:0 6px;margin-left:6px;opacity:.75;vertical-align:1px}
+.ubtn[aria-pressed="true"]{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 10%,var(--card));color:var(--blue);font-weight:700}
+.psum{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:6px}
+.psum b{font-size:17px}
+.psum span{color:var(--muted);font-size:14px}
+/* 小面板裡：緊湊一點 */
+.pick.compact .prow{grid-template-columns:64px minmax(0,1fr);padding:10px 14px}
+.pick.compact .plb{padding-top:7px}
+.pick.compact .psel{font-size:16px;padding:6px 8px;width:100%}
+@media (max-width:560px){
+  .prow,.pick.compact .prow{grid-template-columns:1fr;padding:12px 14px}
+  .plb,.pick.compact .plb{padding-top:0}
+  .psel{width:100%}
+  .psum{padding-top:0}
+  /* 手機：點擊目標至少 40px 高 */
+  .cap,.ubtn,.upanel .ph .chip,.parea>.seg button{min-height:40px}
+}
+
+/* ── 成績畫面（JP_UI.result）：舊版結束畫面 ── */
+.result{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;max-width:560px;width:100%;margin:8px auto;
+  display:flex;flex-direction:column;gap:10px;text-align:left}
+.result h2{margin:0;font-size:22px;text-align:center}
+.result .rsub{margin:0;color:var(--muted);font-size:14px}
+.result .rbig{font-size:clamp(36px,9vw,52px);font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--blue)}
+.result dl{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin:0;font-variant-numeric:tabular-nums}
+.result dt{color:var(--muted)} .result dd{margin:0;font-weight:700;font-size:19px;text-align:right}
+.result h3{margin:8px 0 0;font-size:15px}
+.result .go{width:100%}
+.utab{display:flex;flex-direction:column;gap:4px}
+.urow{display:grid;grid-template-columns:minmax(0,1fr) 80px auto;gap:10px;align-items:center;font-size:14px}
+.urow .un{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urow .ub{height:8px;border-radius:99px;background:var(--badbg);overflow:hidden}
+.urow .ub i{display:block;height:100%;background:var(--ok)}
+.urow .uv{font-variant-numeric:tabular-nums;color:var(--muted);min-width:4em;text-align:right}
+.review{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.review li{border-top:1px solid var(--line);padding-top:6px}
+.review .j{font-family:var(--jp);font-size:21px;line-height:1.9;font-weight:700}
+.review .z{color:var(--muted);font-size:15px}
+.allok{margin:0;color:var(--ok);font-weight:700}
+.csvh{font-size:13px;color:var(--muted);margin:4px 0 0}
+.csv{width:100%;height:150px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;border:1px solid var(--line);border-radius:8px;
+  background:var(--paper);color:var(--ink);padding:8px;white-space:pre;overflow:auto;resize:vertical}

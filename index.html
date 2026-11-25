@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PikaTool 工具網</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 版面：標題 → 分類分頁＋搜尋＋檢視切換 → 工具卡片（可翻頁）。「精簡清單」檢視完全不放動畫 */
+:root{
+  --paper:#f3f4ef; --card:#ffffff; --ink:#1b2430; --muted:#6a7482; --line:#d8dbd4;
+  --blue:#1c5fd6; --ok:#23805a; --bad:#cf4028; --soft:#e7eaf3;
+  --jp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  --ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+    --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --soft:#232b36;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+  --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --soft:#232b36;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--ui);overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+[hidden]{display:none!important}
+.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.bg span{position:absolute;bottom:-60px;font-family:var(--jp);font-weight:700;color:var(--blue);opacity:0;user-select:none}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:28px 16px 36px;display:flex;flex-direction:column;gap:18px}
+h1{font-weight:900;font-size:clamp(38px,9vw,68px);line-height:1.1;margin:0;display:flex;flex-wrap:wrap;letter-spacing:.02em}
+h1 span{display:inline-block;white-space:pre}  /* pre：標題裡的空白才不會被吃掉 */
+h1 .b{color:var(--blue)}
+.lead{font-size:16px;color:var(--muted);margin:4px 0 0;line-height:1.6}
+
+/* 分類分頁 */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);position:relative;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:11px 14px 12px;font-size:17px;font-weight:700;color:var(--muted);white-space:nowrap;display:flex;gap:7px;align-items:center}
+.tab[aria-selected="true"]{color:var(--ink)}
+.tab small{font-size:12px;font-weight:500;background:var(--soft);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.ink{position:absolute;bottom:0;left:0;height:3px;width:60px;background:var(--blue);border-radius:3px 3px 0 0;transition:transform .28s cubic-bezier(.3,.8,.3,1),width .28s cubic-bezier(.3,.8,.3,1)}
+.plain .ink{transition:none}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{flex:1 1 180px;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:15px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:9px 12px;font-size:14px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:700}
+
+/* 卡片檢視 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;perspective:1200px;align-content:start}
+.card{display:flex;flex-direction:column;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px;
+  text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
+a.card:hover,a.card:focus-visible{border-color:var(--blue);box-shadow:0 10px 26px -14px var(--blue)}
+.demo{height:104px;border-radius:11px;background:var(--soft);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--jp)}
+.meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.pick{font-style:normal;color:var(--blue);font-weight:700;letter-spacing:0}
+.card h2{margin:0;font-size:20px;line-height:1.3}
+.card p{margin:0;color:var(--muted);font-size:14px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tags span{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 8px;color:var(--muted)}
+.cta{display:flex;align-items:center;justify-content:space-between;font-weight:700;color:var(--blue);font-size:15px;border-top:1px solid var(--line);padding-top:9px;margin-top:auto}
+.cta i{font-style:normal;display:inline-block;transition:transform .18s}
+a.card:hover .cta i{transform:translateX(5px)}
+.card.todo{border-style:dashed}
+.card.todo .cta{color:var(--muted)}
+
+/* 精簡清單檢視（沒有動畫） */
+.list{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:grid;grid-template-columns:2.4em 1fr auto;gap:2px 10px;align-items:center;padding:11px 14px;text-decoration:none;color:inherit;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+a.item:hover,a.item:focus-visible{background:var(--soft)}
+.item .n{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;grid-row:span 2}
+.item b{font-size:17px}
+.item .d{grid-column:2;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .go{grid-row:1/span 2;grid-column:3;color:var(--blue);font-weight:700;font-size:14px;white-space:nowrap}
+.item.todo .go{color:var(--muted)}
+.item .c{font-size:11px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.empty{color:var(--muted);padding:26px 0;text-align:center}
+
+.pager{display:flex;align-items:center;justify-content:center;gap:10px;font-variant-numeric:tabular-nums}
+.pager button{border:1px solid var(--line);background:var(--card);border-radius:10px;min-width:44px;height:40px;font-size:18px}
+.pager button:disabled{opacity:.35;cursor:default}
+.dots{display:flex;gap:6px;align-items:center}
+.dots button{min-width:0;width:10px;height:10px;padding:0;border-radius:50%;border:0;background:var(--line)}
+.dots button[aria-current="true"]{background:var(--blue);width:22px;border-radius:6px}
+.pager .pg{color:var(--muted);font-size:14px;min-width:4.5em;text-align:center}
+
+/* 卡片示意動畫的零件 */
+.t-word{font-size:30px;font-weight:700;display:flex;gap:2px;margin-bottom:30px}
+.t-word span{color:var(--muted)} .t-word span.on{color:var(--ok)}
+.t-keys{position:absolute;bottom:9px;left:0;right:0;display:flex;gap:5px;justify-content:center}
+.t-keys b{width:24px;height:24px;border-radius:6px;background:var(--card);border:1px solid var(--line);font:500 12px var(--ui);display:flex;align-items:center;justify-content:center}
+.q-ask{position:absolute;top:6px;left:0;right:0;text-align:center;font:500 13px var(--ui);color:var(--muted)}
+.q-box{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:74%;margin-top:20px}
+.q-box b{font-weight:700;font-size:16px;background:var(--card);border:2px solid var(--line);border-radius:8px;padding:3px 0;text-align:center}
+.f-blk{position:absolute;top:34px;left:12%;font-weight:700;font-size:15px;background:var(--card);border:2px solid var(--line);border-radius:8px;padding:1px 9px}
+.f-blk:nth-child(2){left:42%;top:10px}.f-blk:nth-child(3){left:70%;top:52px}
+.f-line{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--bad);opacity:.55}
+.d-cards{display:flex;gap:8px}
+.d-cards b{width:38px;height:54px;border-radius:7px;background:var(--card);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font:900 20px var(--ui);color:var(--blue)}
+.c-face{width:70px;height:70px;border-radius:50%;background:var(--card);border:3px solid var(--ink);position:relative}
+.c-face i{position:absolute;left:50%;bottom:50%;width:3px;margin-left:-1.5px;border-radius:3px;background:var(--ink);transform-origin:50% 100%}
+.c-face i.h{height:18px}.c-face i.m{height:27px;background:var(--blue)}
+.c-ring{position:absolute;width:70px;height:70px;border-radius:50%;border:2px solid var(--blue);opacity:0}
+.g-svg{width:84%;height:80%}
+.g-svg path{fill:none;stroke-width:3;stroke-linecap:round}
+.g-svg .a{stroke:var(--ok)} .g-svg .e{stroke:var(--bad)} .g-svg .x{stroke:var(--line);stroke-width:1.5}
+.tb{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:80%}
+.tb b{height:15px;border-radius:4px;background:var(--card);border:1px solid var(--line)}
+.tb b.hd{background:var(--blue);border-color:var(--blue);opacity:.85}
+.n-plug{display:flex;gap:4px;align-items:flex-end;padding:9px 10px 6px;border:3px solid var(--ink);border-radius:8px 8px 3px 3px;background:var(--card)}
+.n-plug b{width:6px;height:26px;border-radius:2px;background:var(--line)}
+.n-wire{position:absolute;left:0;right:0;bottom:14px;height:3px;background:var(--line)}
+.n-dot{position:absolute;left:0;bottom:10px;width:11px;height:11px;border-radius:50%;background:var(--blue)}
+.k-big{font-size:56px;font-weight:900;line-height:1}
+.co{display:flex;flex-direction:column;gap:7px;width:76%}
+.co b{height:8px;border-radius:4px;background:var(--muted);transform-origin:0 50%;opacity:.7}
+.co b:nth-child(1){width:55%;background:var(--blue)}.co b:nth-child(2){width:85%;margin-left:10%}.co b:nth-child(3){width:60%;margin-left:10%;background:var(--ok)}.co b:nth-child(4){width:35%}
+.sc{display:flex;gap:26px;align-items:flex-end;height:82%}
+.sc div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%;font-family:var(--ui)}
+.sc span{font-weight:900;font-size:18px;font-variant-numeric:tabular-nums}
+.sc i{width:32px;height:10px;border-radius:6px 6px 0 0;background:var(--blue)}
+.sc div:nth-child(2) i{background:var(--ok)}
+.sc b{font-size:11px;color:var(--muted);font-weight:500}
+.cj{font-size:36px;font-weight:900;display:flex;margin-bottom:12px}
+.cj b{color:var(--bad);display:inline-block;min-width:1.1em}
+.cj-l{position:absolute;bottom:7px;left:0;right:0;text-align:center;font:500 12px var(--ui);color:var(--muted)}
+.sd{width:84%;display:flex;flex-direction:column;gap:5px}
+.sd div{display:flex;align-items:center;gap:7px;background:var(--card);border-radius:6px;padding:4px 6px}
+.sd i{width:28px;height:9px;border-radius:3px;background:var(--ok);opacity:.8}
+.sd b{flex:1;height:7px;border-radius:3px;background:var(--line)}
+.sd u{text-decoration:none;font:700 10px var(--ui);color:var(--card);background:var(--ok);border-radius:4px;padding:2px 7px;display:inline-block}
+.sl{position:relative;width:104px;height:64px}
+.sl b{position:absolute;inset:0;border-radius:7px;background:var(--card);border:2px solid var(--line);overflow:hidden}
+.sl b::before{content:"";position:absolute;left:10px;top:10px;width:46%;height:8px;border-radius:4px;background:var(--blue)}
+.sl b::after{content:"";position:absolute;left:10px;top:28px;right:14px;height:22px;border-radius:4px;background:var(--soft)}
+.sl b:nth-child(2)::before{background:var(--ok)}.sl b:nth-child(1)::before{background:var(--bad)}
+.tm{width:76px;height:76px;transform:rotate(-90deg)}
+.tm circle{fill:none;stroke-width:7}
+.tm .bg0{stroke:var(--card)} .tm .fg{stroke:var(--blue);stroke-linecap:round}
+.tm-n{position:absolute;font:900 26px var(--ui);font-variant-numeric:tabular-nums}
+.br{display:flex;gap:8px;align-items:flex-end;height:70%;border-bottom:2px solid var(--line);padding:0 6px}
+.br b{width:18px;border-radius:4px 4px 0 0;background:var(--blue);transform-origin:50% 100%}
+.br b:nth-child(2n){background:var(--ok)}
+.ck{display:flex;flex-direction:column;gap:8px;width:70%}
+.ck div{display:flex;align-items:center;gap:8px}
+.ck i{width:16px;height:16px;border-radius:4px;border:2px solid var(--muted);background:var(--card);flex:none}
+.ck b{height:7px;border-radius:4px;background:var(--line);flex:1}
+.ck div:nth-child(2) b{flex:.7}.ck div:nth-child(3) b{flex:.85}
+.chb{display:flex;flex-direction:column;gap:6px;width:76%}
+.chb b{height:20px;border-radius:10px 10px 10px 3px;background:var(--card);border:1px solid var(--line);width:62%;transform-origin:0 100%}
+.chb b.r{align-self:flex-end;background:var(--blue);border-color:var(--blue);border-radius:10px 10px 3px 10px;width:48%;transform-origin:100% 100%}
+.chb b.s{width:38%}
+.di{width:58px;height:58px;border-radius:12px;background:var(--card);border:3px solid var(--ink);display:grid;grid-template-columns:repeat(3,1fr);padding:7px;gap:2px}
+.di i{border-radius:50%;background:var(--ink);opacity:0;margin:1px}
+.di i.on{opacity:1}
+.au{font:900 40px var(--ui);color:var(--blue);display:flex;gap:2px}
+.gn{position:relative;width:90%;height:100%;display:flex;justify-content:space-between;align-items:center;padding:0 2%}
+.gp{display:flex;flex-direction:column;align-items:center;gap:2px}
+.gp .fl{display:block;line-height:0}
+.gp.b .fl{transform:scaleX(-1)}
+.gp svg{width:34px;height:38px;fill:var(--blue)}
+.gp.b svg{fill:var(--bad)}
+.gp i{font:700 11px var(--ui);font-style:normal;color:var(--bad);letter-spacing:.04em;min-height:1.2em}
+.gb{position:absolute;left:45%;top:38%;width:11px;height:11px;margin-top:-5.5px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 2px var(--card)}
+.gq{position:absolute;left:50%;top:14%;transform:translateX(-50%);font:700 14px var(--jp);background:var(--card);border:2px solid var(--ok);color:var(--ok);border-radius:8px;padding:0 7px;white-space:nowrap;opacity:0}
+footer{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.link{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;font-size:13px}
+footer{font-size:13px;color:var(--muted);line-height:1.6}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="bg" id="bg" aria-hidden="true"></div>
+<div class="wrap" id="wrap">
+  <header>
+    <h1 id="title" aria-label="工具選單"></h1>
+    <p class="lead" id="lead"></p>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="工具分類"><span class="ink" id="ink"></span></nav>
+  <div class="tools">
+    <input class="search" id="q" type="search" placeholder="搜尋全部工具" aria-label="搜尋全部工具" autocomplete="off">
+    <div class="seg" id="segView" aria-label="檢視方式">
+      <button type="button" data-v="cards" aria-pressed="true">動態卡片</button>
+      <button type="button" data-v="list" aria-pressed="false">精簡清單</button>
+    </div>
+  </div>
+  <main id="main"></main>
+  <div class="pager" id="pager">
+    <button type="button" id="prev" aria-label="上一頁">‹</button>
+    <div class="dots" id="dots"></div><span class="pg" id="pg"></span>
+    <button type="button" id="next" aria-label="下一頁">›</button>
+  </div>
+  <footer><button type="button" class="link" id="btnDemos">看全部動畫模板</button><span id="foot"></span></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script>
+/* ======================================================================
+   選單內容 — 要加工具、換網址，只改這一段
+   ----------------------------------------------------------------------
+   加一個工具：在 TOOLS 裡加一行
+     { cat:'分類代號', title:'名稱', url:'網址', desc:'一兩句說明', demo:'動畫名稱', tags:['標籤','標籤'] },
+   ・cat  ：basic＝基本工具、it＝資訊與程式、jp＝日文、event＝研習活動（分類在 CATEGORIES，可自己加）
+   ・url  ：CodePen 或其他網址；先留空 '' 會顯示「尚未設定網址」
+           站內工具寫相對路徑並寫到 index.html（例：'03_jp/n5/index.html'），file:// 直接點開才找得到；
+           站內連結在同一分頁開啟，http(s) 開頭的外部連結開新分頁
+   ・demo ：卡片上的小動畫，從下面挑一個；不寫或寫 '' 會自動用名稱的前兩個字做動畫
+       typing 打字      quiz 選擇題      fall 掉落方塊     draw 抽籤/抽卡
+       clock 時鐘鬧鈴   chart 折線圖     table 表格        net 網路線/傳輸
+       kana 假名翻轉    code 程式碼      score 分組計分    conj 動詞變化
+       schedule 課程表  slides 投影片    timer 倒數計時    bars 長條圖
+       check 勾選清單   chat 對話/AI     dice 骰子        gun 槍戰/對戰
+     想看每個長什麼樣子：打開網頁，按最下面的「看全部動畫模板」
+   ・desc、tags 可以省略
+   ====================================================================== */
+const SITE={ title:'PikaTool 工具網', accentFrom:4, featuredName:'最新推薦',          // 標題從第幾個字開始用藍色（從 0 算）
+             lead:'課堂用的小工具、資訊教材、日文練習、研習活動，都收在這裡。',
+             footer:'' };
+const CATEGORIES=[
+  { id:'basic', name:'基本工具', glyphs:'＋－×÷％✓☆◎' },
+  { id:'it', name:'資訊與程式', glyphs:'{}<>/;01#=' },
+  { id:'jp', name:'日文', glyphs:'あいうえおかきくけこアイウエオ' },
+  { id:'event', name:'研習活動', glyphs:'◇○△□☆♪' },
+];
+// 「最新推薦」分頁要放哪些工具：寫工具的名稱（要和 TOOLS 裡的 title 一模一樣），照這裡的順序顯示。
+// 這裡只是指過去，不用把工具資料再寫一次；想換主題就改這個清單。清空 [] 則不顯示這個分頁。
+const FEATURED=['N5 日文練習','日文打字battle','掉落方塊打字'];
+const TOOLS=[
+  // ── 基本工具 ──
+  { cat:'basic', title:'隨機抽籤卡', url:'https://codepen.io/fqafqpbj-the-bashful/full/MYpGbMV', demo:'draw', desc:'貼上名單，單抽或一次抽多個，可設定抽過的不再放回。', tags:['抽籤','名單'] },
+  { cat:'basic', title:'課堂工具', url:'https://codepen.io/fqafqpbj-the-bashful/full/EaWVOpe', demo:'score', desc:'抽籤、分組計分、隨機式抽籤集合在一頁。', tags:['抽籤','分組','計分'] },
+  { cat:'basic', title:'學校鬧鐘系統', url:'https://codepen.io/fqafqpbj-the-bashful/full/myVGmqw', demo:'clock', desc:'顯示現在時間與下一次鐘響，可手動控制各節上下課鐘。', tags:['時間','鐘聲'] },
+  { cat:'basic', title:'單利複利', url:'https://codepen.io/fqafqpbj-the-bashful/full/azmGYXg', demo:'chart', desc:'輸入本金、利率、年數，用圖表比較單利與複利的成長。', tags:['圖表','計算'] },
+  // ── 資訊與程式 ──
+  { cat:'it', title:'RJ45 網路線頭製作', url:'https://codepen.io/fqafqpbj-the-bashful/full/jEqpXRg', demo:'net', desc:'RJ45 是什麼、T568B 線序、製作步驟的教學投影片。', tags:['網路','教學'] },
+  // ── 日文 ──
+  { cat:'jp', title:'N5 日文練習', url:'03_jp/n5/index.html', demo:'check', desc:'先選今天的課程與範圍，再依序看題庫、選擇測驗、打字練習。', tags:['選課程範圍','題庫','測驗','打字'] },
+  { cat:'jp', title:'日文打字battle', url:'03_jp/n5/battle.html', demo:'gun', desc:'2 到 4 人連線對戰，可選課程與範圍。競速比誰先打完；單字槍戰打完一題就開槍，被射中要打字解除子彈。大螢幕可當看板。', tags:['多人連線','單字槍戰','看板'] },
+  { cat:'jp', title:'掉落方塊打字', url:'03_jp/n5/index.html?go=fall', demo:'fall', desc:'可選課程與範圍。方塊掉到紅線前打出讀音把它消掉。有血量、連擊、等級，也有不死的練習模式。', tags:['血量可調','難度漸增'] },
+  { cat:'jp', title:'日文五十音練習', url:'https://codepen.io/fqafqpbj-the-bashful/full/XJjmodP', demo:'kana', desc:'學習模式、猜字練習等，從零開始認識假名。', tags:['五十音'] },
+  { cat:'jp', title:'日文動詞基本型態', url:'https://codepen.io/fqafqpbj-the-bashful/full/QwpmYyN', demo:'conj', desc:'依主題整理的基礎動詞表，可切換ます形、ない形、た形、て形等型態，也能比較動詞。', tags:['動詞','型態對照'] },
+  // ── 研習活動 ──
+  { cat:'event', title:'115 7-9數位學習與 AI 研習課程表', url:'https://codepen.io/fqafqpbj-the-bashful/full/ogBpGYy', demo:'schedule', desc:'數位學習工作坊、生成式 AI、教師自製 AI 工具等研習的場次、時間與報名連結。', tags:['研習','課程表'] },
+];
+
+// ───── 以下是程式，一般不用改 ─────
+const $=id=>document.getElementById(id);
+const linkAttr=u=>' href="'+esc(u)+'"'+(/^https?:/i.test(u)?' target="_blank" rel="noopener"':'');   // 外部連結開新分頁，站內連結同分頁
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store={get(k,d){try{const v=localStorage.getItem('menu_'+k);return v===null?d:v}catch(e){return d}},
+             set(k,v){try{localStorage.setItem('menu_'+k,v)}catch(e){}}};
+const calm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hasAnime=!!window.anime;
+const NEW='new';                                   // 「最新推薦」分頁的代號
+const picks=()=>FEATURED.map(n=>TOOLS.find(t=>t.title===n)).filter(Boolean);
+const TABS=(picks().length?[{id:NEW,name:SITE.featuredName||'最新推薦',glyphs:'★☆✦'}]:[]).concat(CATEGORIES);
+let view=store.get('view','cards'),cat=TABS[0].id,page=0,q='';
+const motion=()=>hasAnime&&!calm&&view==='cards';
+const catName=id=>(CATEGORIES.find(c=>c.id===id)||{name:id}).name;
+const isPick=t=>FEATURED.includes(t.title);
+
+// 卡片示意的 HTML
+const DEMO={
+  typing:'<div class="t-word" lang="ja"><span>に</span><span>ほ</span><span>ん</span><span>ご</span></div><div class="t-keys"><b>n</b><b>i</b><b>h</b><b>o</b><b>g</b></div>',
+  quiz:'<div class="q-ask">學校</div><div class="q-box" lang="ja"><b>先生</b><b>学校</b><b>電車</b><b>時計</b></div>',
+  fall:'<div class="f-blk" lang="ja">みず</div><div class="f-blk" lang="ja">ねこ</div><div class="f-blk" lang="ja">あめ</div><div class="f-line"></div>',
+  draw:'<div class="d-cards"><b></b><b>★</b><b></b></div>',
+  clock:'<div class="c-ring"></div><div class="c-face"><i class="h"></i><i class="m"></i></div>',
+  chart:'<svg class="g-svg" viewBox="0 0 200 90"><path class="x" d="M4 86H196M4 86V4"/><path class="a" d="M6 80L194 52"/><path class="e" d="M6 80C90 76 150 60 194 8"/></svg>',
+  table:'<div class="tb">'+'<b class="hd"></b>'.repeat(4)+'<b></b>'.repeat(12)+'</div>',
+  net:'<div class="n-plug">'+'<b></b>'.repeat(8)+'</div><div class="n-wire"></div><div class="n-dot"></div>',
+  kana:'<div class="k-big" lang="ja">あ</div>',
+  code:'<div class="co"><b></b><b></b><b></b><b></b></div>',
+  score:'<div class="sc"><div><span>1</span><i></i><b>A 組</b></div><div><span>1</span><i></i><b>B 組</b></div></div>',
+  conj:'<div class="cj" lang="ja"><span>食べ</span><b>る</b></div><div class="cj-l">辭書形</div>',
+  schedule:'<div class="sd">'+'<div><i></i><b></b><u>報名</u></div>'.repeat(3)+'</div>',
+  slides:'<div class="sl"><b></b><b></b><b></b></div>',
+  timer:'<svg class="tm" viewBox="0 0 80 80"><circle class="bg0" cx="40" cy="40" r="32"/><circle class="fg" cx="40" cy="40" r="32"/></svg><div class="tm-n">5</div>',
+  bars:'<div class="br"><b style="height:35%"></b><b style="height:60%"></b><b style="height:45%"></b><b style="height:85%"></b><b style="height:70%"></b></div>',
+  check:'<div class="ck">'+'<div><i></i><b></b></div>'.repeat(3)+'</div>',
+  chat:'<div class="chb"><b></b><b class="r"></b><b class="s"></b></div>',
+  dice:'<div class="di">'+'<i></i>'.repeat(9)+'</div>',
+  gun:'<div class="gn">'+['a','b'].map(k=>'<div class="gp '+k+'"><span class="fl"><svg viewBox="0 0 40 44"><circle cx="18" cy="10" r="8"/><rect x="8" y="19" width="20" height="22" rx="7"/><rect x="26" y="24" width="13" height="4.5" rx="2"/></svg></span><i>♥♥♥</i></div>').join('')+
+      '<b class="gb"></b><span class="gq" lang="ja">みず ✓</span></div>',
+};
+const DEMO_LABEL={typing:'打字',quiz:'選擇題',fall:'掉落方塊',draw:'抽籤、抽卡',clock:'時鐘、鬧鈴',chart:'折線圖',table:'表格',net:'網路線、傳輸',
+  kana:'假名翻轉',code:'程式碼',score:'分組計分',conj:'動詞變化',schedule:'課程表、報名',slides:'投影片',timer:'倒數計時',bars:'長條圖',check:'勾選清單',chat:'對話、AI',dice:'骰子',gun:'槍戰、對戰'};
+let gallery=false;      // true 時顯示全部動畫模板，方便挑
+const demoHtml=t=>DEMO[t.demo]||'<div class="au">'+[...t.title].slice(0,2).map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>';
+
+// 卡片示意的動畫：每個回傳 anime 物件，換頁時會全部停掉
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ANIM={
+  typing(c){const ch=c.querySelectorAll('.t-word span'),keys=c.querySelectorAll('.t-keys b'),seq=[0,1,2,3,0,4,3],done=[0,1,1,2,3,3,4];
+    const tl=anime.timeline({loop:true,easing:'easeOutQuad'});
+    seq.forEach((k,i)=>tl.add({targets:keys[k],scale:[1,.78,1],duration:240,complete:()=>ch.forEach((x,j)=>x.classList.toggle('on',j<done[i]))},i===0?400:'+=110'));
+    tl.add({targets:ch,scale:[1,1.18,1],delay:anime.stagger(50),duration:300},'+=100').add({duration:900,complete:()=>ch.forEach(x=>x.classList.remove('on'))});return [tl]},
+  quiz(c){const o=c.querySelectorAll('.q-box b'),ok=cssVar('--ok'),line=cssVar('--line'),ink=cssVar('--ink');
+    return [anime.timeline({loop:true,easing:'easeOutQuad'})
+      .add({targets:o,translateY:[8,0],opacity:[0,1],delay:anime.stagger(80),duration:300},300)
+      .add({targets:o[1],scale:[1,.92,1.06,1],borderColor:[line,ok],color:[ink,ok],duration:520},'+=500')
+      .add({targets:o,opacity:0,duration:260,delay:1100}).add({targets:o[1],borderColor:line,color:ink,duration:1})]},
+  fall(c){return [...c.querySelectorAll('.f-blk')].map((b,i)=>{b.style.top='0';
+    return anime.timeline({loop:true,delay:i*700}).add({targets:b,translateY:[-30,36+i*12],opacity:[1,1],scale:1,duration:1700+i*250,easing:'linear'})
+      .add({targets:b,scale:1.35,opacity:0,duration:240,easing:'easeOutQuad'}).add({duration:500})})},
+  draw(c){const k=c.querySelectorAll('.d-cards b');
+    return [anime.timeline({loop:true,easing:'easeInOutQuad'})
+      .add({targets:k,rotate:[0,-9,9,-6,6,0],translateX:[0,5,-5,3,0],delay:anime.stagger(60),duration:700},400)
+      .add({targets:k[1],translateY:-12,scale:1.18,duration:320,easing:'easeOutBack'})
+      .add({targets:k[1],translateY:0,scale:1,duration:300,delay:900})]},
+  clock(c){return [anime({targets:c.querySelector('.m'),rotate:360,duration:4000,easing:'linear',loop:true}),
+    anime({targets:c.querySelector('.h'),rotate:360,duration:48000,easing:'linear',loop:true}),
+    anime({targets:c.querySelector('.c-ring'),scale:[1,1.5],opacity:[.7,0],duration:1300,easing:'easeOutQuad',loop:true,delay:2700})]},
+  chart(c){const p=c.querySelectorAll('.a,.e');
+    return [anime.timeline({loop:true}).add({targets:p,strokeDashoffset:[anime.setDashoffset,0],duration:1500,delay:anime.stagger(250),easing:'easeInOutSine'},300)
+      .add({targets:p,opacity:[1,0],duration:400,delay:1400,easing:'linear'}).add({targets:p,opacity:1,strokeDashoffset:anime.setDashoffset,duration:1})]},
+  table(c){const k=c.querySelectorAll('.tb b:not(.hd)'),blue=cssVar('--blue');
+    return [anime.timeline({loop:true}).add({targets:k,opacity:[.25,1],scale:[.8,1],delay:anime.stagger(70,{grid:[4,3],from:'first'}),duration:260,easing:'easeOutQuad'},300)
+      .add({targets:k[5],backgroundColor:blue,duration:300,delay:300}).add({targets:k[5],backgroundColor:cssVar('--card'),duration:300,delay:900})]},
+  net(c){const pins=c.querySelectorAll('.n-plug b'),col=['#e8a33d','#e8a33d','#3da36b','#3d6fe8','#3d6fe8','#3da36b','#9a6b45','#9a6b45'],line=cssVar('--line'),w=c.clientWidth;
+    return [anime.timeline({loop:true}).add({targets:pins,backgroundColor:(el,i)=>col[i],delay:anime.stagger(110),duration:200,easing:'linear'},300)
+      .add({targets:pins,backgroundColor:line,duration:300,delay:900,easing:'linear'}),
+      anime({targets:c.querySelector('.n-dot'),translateX:[-14,w+4],duration:1500,easing:'easeInOutQuad',loop:true,delay:300,endDelay:500})]},
+  kana(c){const k=c.querySelector('.k-big'),pairs=['あ','ア','か','カ','さ','サ'];let i=0;
+    return [anime.timeline({loop:true})
+      .add({targets:k,rotateY:[0,90],duration:240,easing:'easeInQuad',complete:()=>{i=(i+1)%pairs.length;k.textContent=pairs[i]}},700)
+      .add({targets:k,rotateY:[90,0],duration:240,easing:'easeOutQuad'})]},
+  code(c){const k=c.querySelectorAll('.co b');
+    return [anime.timeline({loop:true}).add({targets:k,scaleX:[0,1],delay:anime.stagger(260),duration:420,easing:'easeOutQuad'},300).add({targets:k,opacity:[.7,0],duration:300,delay:1100,easing:'linear'}).add({targets:k,opacity:.7,scaleX:0,duration:1})]},
+  score(c){const col=[...c.querySelectorAll('.sc div')].map(d=>({n:d.querySelector('span'),bar:d.querySelector('i')})),n=[1,1];
+    const tl=anime.timeline({loop:true,easing:'easeOutBack'});
+    [0,1,0,0,1,0].forEach((w,k)=>{const v=++n[w];tl.add({targets:col[w].bar,height:10+(v-1)*8,duration:320,begin:()=>{col[w].n.textContent=v}},k?'+=360':500)
+      .add({targets:col[w].n,scale:[1.5,1],duration:260},'-=300')});
+    tl.add({targets:col.map(x=>x.bar),height:10,duration:300,delay:900,easing:'easeInQuad',complete:()=>col.forEach(x=>x.n.textContent=1)});return [tl]},
+  conj(c){const e=c.querySelector('.cj b'),l=c.querySelector('.cj-l'),f=[['る','辭書形'],['ます','ます形'],['ない','ない形'],['た','た形'],['て','て形']];let i=0;
+    return [anime.timeline({loop:true})
+      .add({targets:e,translateY:[0,-14],opacity:[1,0],duration:200,easing:'easeInQuad',complete:()=>{i=(i+1)%f.length;e.textContent=f[i][0];l.textContent=f[i][1]}},900)
+      .add({targets:e,translateY:[14,0],opacity:[0,1],duration:260,easing:'easeOutBack'})]},
+  schedule(c){const r=c.querySelectorAll('.sd div'),btn=r[1].querySelector('u');
+    return [anime.timeline({loop:true}).add({targets:r,translateX:[-30,0],opacity:[0,1],delay:anime.stagger(130),duration:340,easing:'easeOutCubic'},300)
+      .add({targets:btn,scale:[1,1.35,1],duration:480,easing:'easeInOutQuad'},'+=350').add({targets:btn,scale:[1,1.35,1],duration:480,easing:'easeInOutQuad'})
+      .add({targets:r,opacity:0,duration:260,delay:700,easing:'linear'})]},
+  slides(c){const k=c.querySelectorAll('.sl b');
+    return [anime.timeline({loop:true,easing:'easeInOutCubic'}).add({targets:k[2],translateX:-150,rotate:-8,duration:520},900).add({targets:k[1],translateX:-150,rotate:-8,duration:520},'+=800')
+      .add({targets:[k[1],k[2]],translateX:[150,0],rotate:[8,0],duration:480,delay:anime.stagger(140),easing:'easeOutCubic'},'+=800')]},
+  timer(c){const fg=c.querySelector('.fg'),n=c.querySelector('.tm-n'),len=2*Math.PI*32;fg.style.strokeDasharray=len;
+    return [anime({targets:fg,strokeDashoffset:[0,len],duration:5000,easing:'linear',loop:true,endDelay:500,update:a=>{n.textContent=Math.max(0,Math.ceil(5*(1-Math.min(1,a.currentTime/5000))))}})]},
+  bars(c){const k=c.querySelectorAll('.br b');
+    return [anime.timeline({loop:true}).add({targets:k,scaleY:[0,1],delay:anime.stagger(110),duration:520,easing:'easeOutBack'},300).add({targets:k,scaleY:0,duration:300,delay:1300,easing:'easeInQuad'})]},
+  check(c){const k=c.querySelectorAll('.ck i'),ok=cssVar('--ok'),card=cssVar('--card'),mu=cssVar('--muted');
+    return [anime.timeline({loop:true}).add({targets:k,backgroundColor:ok,borderColor:ok,scale:[1,1.3,1],delay:anime.stagger(450),duration:300,easing:'easeOutQuad'},500)
+      .add({targets:k,backgroundColor:card,borderColor:mu,duration:300,delay:1000,easing:'linear'})]},
+  chat(c){const k=c.querySelectorAll('.chb b');
+    return [anime.timeline({loop:true}).add({targets:k,scale:[0,1],opacity:[0,1],delay:anime.stagger(520),duration:320,easing:'easeOutBack'},300).add({targets:k,opacity:0,duration:260,delay:1100,easing:'linear'})]},
+  dice(c){const d=c.querySelector('.di'),p=d.querySelectorAll('i'),F=[[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
+    const show=()=>{const f=F[Math.random()*6|0];p.forEach((x,i)=>x.classList.toggle('on',f.includes(i)))};show();
+    return [anime.timeline({loop:true}).add({targets:d,rotate:[0,360],scale:[1,.8,1],duration:620,easing:'easeInOutQuad',changeBegin:show,complete:show},900)]},
+  // 槍戰：藍色開槍命中紅色（扣一滴血），紅色還擊、藍色在半路打完題目把子彈解除
+  gun(c){const g=c.querySelector('.gn'),A=g.querySelector('.gp.a'),B=g.querySelector('.gp.b'),b=g.querySelector('.gb'),q=g.querySelector('.gq');
+    const hA=A.querySelector('i'),hB=B.querySelector('i'),blue=cssVar('--blue'),red=cssVar('--bad');
+    const w=g.clientWidth||200,x0=w*0.17,x1=w*0.79,mid=w*0.42;
+    b.style.left='0';b.style.opacity=0;
+    return [anime.timeline({loop:true,easing:'linear'})
+      .add({targets:b,opacity:0,translateX:x0,duration:1,complete:()=>{b.style.background=blue}})          // 每一輪開頭先把子彈藏好、換回藍色
+      .add({targets:A.querySelector('svg'),rotate:[0,-12,0],duration:260,easing:'easeOutQuad'},500)
+      .add({targets:b,translateX:[x0,x1],opacity:[1,1],duration:850},'-=200')
+      .add({targets:b,opacity:0,duration:60})
+      .add({targets:B,translateX:[0,5,-5,3,0],opacity:[1,.35,1,.35,1],duration:420,easing:'easeOutQuad',begin:()=>{hB.textContent='♥♥'}},'-=40')
+      .add({targets:B.querySelector('svg'),rotate:[0,-12,0],duration:260,easing:'easeOutQuad',complete:()=>{b.style.background=red}},'+=350')
+      .add({targets:b,translateX:[x1,mid],opacity:[1,1],duration:620},'-=200')
+      .add({targets:q,opacity:[0,1],translateY:[6,0],duration:220,easing:'easeOutBack'})
+      .add({targets:b,scale:[1,2],opacity:[1,0],duration:260,easing:'easeOutQuad'},'-=120')
+      .add({targets:q,opacity:0,duration:260,delay:700,complete:()=>{hB.textContent='♥♥♥';b.style.transform=''}})
+      .add({duration:500})]},
+  auto(c){return [anime({targets:c.querySelectorAll('.au span'),translateY:[0,-9,0],delay:anime.stagger(140),duration:900,easing:'easeInOutSine',loop:true,endDelay:500})]},
+};
+let running=[];
+const stopAll=()=>{running.forEach(a=>{try{a.pause()}catch(_){}});running=[]};
+
+// ───── 資料篩選與分頁 ─────
+function current(){
+  if(gallery)return Object.keys(DEMO).map(k=>({cat:'',title:DEMO_LABEL[k]||k,url:'',demo:k,desc:"在 TOOLS 裡寫 demo:'"+k+"' 就會用這個動畫。",sample:k}));
+  const s=q.trim().toLowerCase();
+  if(!s)return cat===NEW?picks():TOOLS.filter(t=>t.cat===cat);
+  return TOOLS.filter(t=>(t.title+' '+(t.desc||'')+' '+(t.tags||[]).join(' ')+' '+catName(t.cat)).toLowerCase().includes(s));
+}
+function pageSize(){
+  if(view==='list')return 10;
+  const w=$('main').clientWidth||320,cols=Math.max(1,Math.floor((w+14)/264));
+  return cols===1?3:cols*2;
+}
+
+// ───── 畫面 ─────
+function render(animate){
+  stopAll();
+  const all=current(),size=pageSize(),pages=Math.max(1,Math.ceil(all.length/size));
+  page=Math.min(page,pages-1);
+  const items=all.slice(page*size,page*size+size),main=$('main'),searching=!!q.trim()||(cat===NEW&&!gallery);
+  document.body.classList.toggle('plain',!motion());
+  if(!all.length)main.innerHTML='<div class="empty">'+(q.trim()?'找不到符合「'+esc(q.trim())+'」的工具。':'這個分類還沒有工具。到檔案裡的 TOOLS 加一行就會出現。')+'</div>';
+  else if(view==='list'){
+    main.innerHTML='<div class="list">'+items.map((t,i)=>{const tag=t.url?'a':'div';
+      return '<'+tag+' class="item'+(t.url?'':' todo')+'"'+(t.url?linkAttr(t.url):'')+'>'+
+        '<span class="n">'+String(page*size+i+1).padStart(2,'0')+'</span><b>'+esc(t.title)+(searching?'<span class="c">'+esc(catName(t.cat))+'</span>':'')+'</b>'+
+        '<span class="d">'+esc(t.desc||'')+'</span><span class="go">'+(t.sample?"demo:'"+t.sample+"'":t.url?'開啟 →':'未設定網址')+'</span></'+tag+'>'}).join('')+'</div>';
+  }else{
+    main.innerHTML='<div class="grid">'+items.map((t,i)=>{const tag=t.url?'a':'div';
+      return '<'+tag+' class="card'+(t.url?'':' todo')+'"'+(t.url?linkAttr(t.url):'')+' data-demo="'+(DEMO[t.demo]?t.demo:'auto')+'">'+
+        '<div class="demo" aria-hidden="true">'+demoHtml(t)+'</div>'+
+        '<div class="meta"><span>'+String(page*size+i+1).padStart(2,'0')+'</span><span>'+(searching?esc(catName(t.cat)):isPick(t)?'<em class="pick">★ 推薦</em>':'')+'</span></div>'+
+        '<h2>'+esc(t.title)+'</h2>'+(t.desc?'<p>'+esc(t.desc)+'</p>':'')+
+        ((t.tags||[]).length?'<div class="tags">'+t.tags.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>':'')+
+        '<div class="cta">'+(t.sample?"demo:'"+t.sample+"'":t.url?'開啟':'尚未設定網址')+'<i>'+(t.sample?'':'→')+'</i></div></'+tag+'>'}).join('')+'</div>';
+    if(motion()){
+      const cards=main.querySelectorAll('.card');
+      if(animate)running.push(anime({targets:cards,translateY:[22,0],opacity:[0,1],delay:anime.stagger(55),duration:420,easing:'easeOutCubic'}));
+      cards.forEach(c=>{try{running.push(...ANIM[c.dataset.demo](c.querySelector('.demo')))}catch(_){} tilt(c)});
+    }
+  }
+  // 翻頁列
+  $('pager').hidden=pages<=1;
+  $('prev').disabled=page===0;$('next').disabled=page>=pages-1;
+  $('dots').innerHTML=pages<=8?Array.from({length:pages},(_,i)=>'<button type="button" data-p="'+i+'" aria-label="第 '+(i+1)+' 頁"'+(i===page?' aria-current="true"':'')+'></button>').join(''):'';
+  $('pg').textContent=(page+1)+' / '+pages+' 頁';
+  paintTabs();
+}
+function tilt(c){
+  c.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;
+    const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+    anime.remove(c);anime({targets:c,rotateY:x*6,rotateX:-y*6,translateY:-3,duration:240,easing:'easeOutQuad'})});
+  c.addEventListener('pointerleave',()=>{anime.remove(c);anime({targets:c,rotateX:0,rotateY:0,translateY:0,scale:1,duration:400,easing:'easeOutElastic(1,.7)'})});
+  c.addEventListener('pointerdown',()=>anime({targets:c,scale:.97,duration:120,easing:'easeOutQuad'}));
+  c.addEventListener('pointerup',()=>anime({targets:c,scale:1,duration:240,easing:'easeOutBack'}));
+}
+function paintTabs(){
+  const searching=!!q.trim()||gallery;let sel=null;
+  $('tabs').querySelectorAll('.tab').forEach(b=>{const on=!searching&&b.dataset.c===cat;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;if(on)sel=b});
+  const ink=$('ink');
+  if(sel){ink.style.opacity=1;ink.style.width=sel.offsetWidth+'px';ink.style.transform='translateX('+sel.offsetLeft+'px)'}else ink.style.opacity=0;
+}
+// 背景飄浮的符號（只有動態卡片檢視才有）
+let bgAnims=[];
+function background(){
+  bgAnims.forEach(a=>a.pause());bgAnims=[];$('bg').innerHTML='';
+  if(!motion())return;
+  const g=[...((TABS.find(c=>c.id===cat)||{}).glyphs||'・')];
+  for(let i=0;i<12;i++){
+    const s=document.createElement('span');s.textContent=g[Math.random()*g.length|0];
+    s.style.left=(Math.random()*96)+'%';s.style.fontSize=(20+Math.random()*44)+'px';$('bg').appendChild(s);
+    bgAnims.push(anime({targets:s,translateY:[0,-(innerHeight+160)],rotate:[anime.random(-20,20),anime.random(-20,20)],
+      opacity:[{value:.12,duration:1500,easing:'linear'},{value:.12,duration:9000},{value:0,duration:2000,easing:'linear'}],
+      duration:anime.random(14000,24000),delay:i*800,easing:'linear',loop:true}));
+  }
+}
+function setCat(id,push){
+  if(!TABS.some(c=>c.id===id))id=TABS[0].id;
+  cat=id;page=0;gallery=false;if(q){q='';$('q').value=''}
+  if(push){try{history.replaceState(null,'','#'+id)}catch(_){location.hash=id}}
+  render(true);background();
+}
+
+// ───── 事件 ─────
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)setCat(b.dataset.c,true)});
+$('tabs').addEventListener('keydown',e=>{
+  if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
+  const i=TABS.findIndex(c=>c.id===cat),n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length;
+  setCat(TABS[n].id,true);$('tabs').querySelector('[data-c="'+TABS[n].id+'"]').focus();
+});
+$('q').addEventListener('input',()=>{q=$('q').value;page=0;gallery=false;render(false)});
+$('btnDemos').addEventListener('click',()=>{gallery=true;q='';$('q').value='';page=0;render(true);$('tabs').scrollIntoView({block:'nearest'})});
+$('segView').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;view=b.dataset.v;store.set('view',view);paintView();page=0;render(true);background();intro()});
+function paintView(){[...$('segView').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===view))}
+$('prev').addEventListener('click',()=>{page--;render(true)});
+$('next').addEventListener('click',()=>{page++;render(true)});
+$('dots').addEventListener('click',e=>{const b=e.target.closest('button');if(b){page=+b.dataset.p;render(true)}});
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h&&h!==cat)setCat(h,false)});
+let rz=0;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>render(false),150)});
+function intro(){
+  const sp=$('title').querySelectorAll('span');
+  if(motion())anime({targets:sp,translateY:[-24,0],opacity:[0,1],rotate:[-8,0],delay:anime.stagger(45),duration:480,easing:'easeOutBack'});
+  else sp.forEach(s=>{s.style.transform='';s.style.opacity=''});
+}
+
+// ───── 啟動 ─────
+document.title=SITE.title;$('title').setAttribute('aria-label',SITE.title);
+$('title').innerHTML=[...SITE.title].map((c,i)=>'<span'+(i>=SITE.accentFrom?' class="b"':'')+'>'+esc(c)+'</span>').join('');
+$('lead').textContent=SITE.lead;$('lead').hidden=!SITE.lead;$('foot').textContent=SITE.footer;$('foot').hidden=!SITE.footer;
+$('tabs').insertAdjacentHTML('afterbegin',TABS.map(c=>'<button type="button" class="tab" role="tab" data-c="'+esc(c.id)+'">'+esc(c.name)+
+  '<small>'+(c.id===NEW?picks().length:TOOLS.filter(t=>t.cat===c.id).length)+'</small></button>').join(''));
+paintView();
+setCat(location.hash.slice(1)||TABS[0].id,false);intro();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(paintTabs);
+</script>
+</body>
+</html>

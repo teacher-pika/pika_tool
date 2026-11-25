@@ -1,0 +1,42 @@
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+
+# 編輯器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 備份檔（選單編輯器存檔時會產生 .bak）
+*.bak
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Playwright 測試產物
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Python
+__pycache__/
+*.pyc
+
+# 打包產物
+dist/
+build/
+*.exe
+
+# 不公開：舊版備份與內部文件（只留在本機）
+raw_source/
+docs/

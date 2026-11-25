@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>N5 日文練習</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="js/core/core.css">
+<style>
+/* 日文頁首頁：外觀比照入口網（根目錄 index.html）——大標題、背景飄浮假名、步驟做成有示意動畫的卡片。
+   共用的顏色、.seg、.chip、選範圍卡片（.pick）在 js/core/core.css；這裡只放首頁自己的版面。
+   卡片內容由 JP_APP.paintSteps 產生（<i>步驟 <b>名稱 <span>說明），示意圖與「開始 →」由 js/home-fx.js 補上。 */
+:root{--soft:#e7eaf3}
+@media (prefers-color-scheme: dark){:root{--soft:#232b36}}
+#homeView{position:relative;min-height:100%;overflow-x:hidden}
+.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.bg span{position:absolute;bottom:-60px;font-family:var(--jp);font-weight:700;color:var(--blue);opacity:0;user-select:none}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:18px 16px 36px;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center;gap:8px}
+.top .home{color:var(--muted);text-decoration:none;font-size:14px}
+.top .home:hover{color:var(--ink)}
+.top .sp{flex:1}
+h1{font-weight:900;font-size:clamp(36px,8vw,60px);line-height:1.1;margin:0;display:flex;flex-wrap:wrap;letter-spacing:.02em;font-family:var(--ui)}
+h1 span{display:inline-block;white-space:pre}
+h1 .b{color:var(--blue)}
+.lead{font-size:16px;color:var(--muted);margin:6px 0 0;line-height:1.6}
+.manual{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.manual input{width:100%;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink)}
+#picker .pick{border-radius:16px}
+
+/* 開始練習：和入口網一樣的卡片 */
+h2.sec{font-size:15px;color:var(--muted);font-weight:500;margin:4px 0 -8px}
+.steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;perspective:1200px;align-content:start}
+.step{display:flex;flex-direction:column;align-items:stretch;gap:9px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px;
+  color:var(--ink);text-decoration:none;min-width:0;cursor:pointer;font:inherit;transition:border-color .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
+.step:not(.off):hover,.step:not(.off):focus-visible{border-color:var(--blue);box-shadow:0 10px 26px -14px var(--blue)}
+.step .demo{height:104px;border-radius:11px;background:var(--soft);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--jp)}
+.step>i{font-style:normal;color:var(--blue);font-size:13px;font-weight:700;letter-spacing:.06em}
+.step>b{font-size:22px;line-height:1.3}
+.step>span{color:var(--muted);font-size:14px;line-height:1.5}
+.step .cta{display:flex;align-items:center;justify-content:space-between;font-weight:700;color:var(--blue);font-size:15px;border-top:1px solid var(--line);padding-top:9px;margin-top:auto}
+.step .cta em{font-style:normal;display:inline-block;transition:transform .18s}
+.step:not(.off):hover .cta em{transform:translateX(5px)}
+.step.off{border-style:dashed;cursor:default}
+.step.off .demo{opacity:.4}
+.step.off .cta,.step.off>i{color:var(--muted)}
+.more{margin:-4px 0 0;font-size:14px;color:var(--muted)}
+.more a{color:var(--ink)}
+.more .off{opacity:.6;text-decoration:line-through}
+footer.credit{font-size:13px;padding:0;text-align:left}
+/* 選範圍的膠囊、小單元：按下去縮一點 */
+.cap,.ubtn,.chip{transition:transform .12s ease,box-shadow .16s ease,background-color .16s ease,border-color .16s ease,color .16s ease}
+.cap:hover,.ubtn:hover{border-color:var(--ink)}
+.cap:active,.ubtn:active,.chip:active{transform:scale(.94)}
+.cap .car{transition:transform .2s ease}
+@media (prefers-reduced-motion:reduce){.step,.step .cta em,.cap,.ubtn,.chip,.cap .car{transition:none}}
+
+/* 卡片示意的零件（quiz、typing、對戰與入口網相同） */
+.bw{width:78%;display:flex;flex-direction:column;gap:5px}
+.bw div{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:6px;padding:2px 8px;font-weight:700;font-size:14px;white-space:nowrap}
+.bw u{flex:1;height:6px;border-radius:3px;background:var(--line);transform-origin:0 50%}
+.t-word{font-size:30px;font-weight:700;display:flex;gap:2px;margin-bottom:30px}
+.t-word span{color:var(--muted)} .t-word span.on{color:var(--ok)}
+.t-keys{position:absolute;bottom:9px;left:0;right:0;display:flex;gap:5px;justify-content:center}
+.t-keys b{width:24px;height:24px;border-radius:6px;background:var(--card);border:1px solid var(--line);font:500 12px var(--ui);display:flex;align-items:center;justify-content:center}
+.q-ask{position:absolute;top:6px;left:0;right:0;text-align:center;font:500 13px var(--ui);color:var(--muted)}
+.q-box{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:74%;margin-top:20px}
+.q-box b{font-weight:700;font-size:16px;background:var(--card);border:2px solid var(--line);border-radius:8px;padding:3px 0;text-align:center}
+.au{font:900 40px var(--ui);color:var(--blue);display:flex;gap:2px}
+.gn{position:relative;width:90%;height:100%;display:flex;justify-content:space-between;align-items:center;padding:0 2%}
+.gp{display:flex;flex-direction:column;align-items:center;gap:2px}
+.gp .fl{display:block;line-height:0}
+.gp.b .fl{transform:scaleX(-1)}
+.gp svg{width:34px;height:38px;fill:var(--blue)}
+.gp.b svg{fill:var(--bad)}
+.gp i{font:700 11px var(--ui);font-style:normal;color:var(--bad);letter-spacing:.04em;min-height:1.2em}
+.gb{position:absolute;left:45%;top:38%;width:11px;height:11px;margin-top:-5.5px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 2px var(--card)}
+.gq{position:absolute;left:50%;top:14%;transform:translateX(-50%);font:700 14px var(--jp);background:var(--card);border:2px solid var(--ok);color:var(--ok);border-radius:8px;padding:0 7px;white-space:nowrap;opacity:0}
+@media (max-width:560px){
+  .wrap{gap:14px}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .step{padding:10px;gap:6px}
+  .step .demo{height:84px}
+  .step>b{font-size:19px}
+  .step>span{font-size:13px}
+  .q-box{width:88%;margin-top:18px;gap:4px} .q-box b{font-size:14px;padding:1px 0} .t-word{font-size:26px}
+}
+</style>
+</head>
+<body>
+<div id="homeView">
+  <div class="bg" id="bg" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="top">
+      <a class="home" href="../../index.html">← PikaTool 工具網</a>
+      <span class="sp"></span>
+      <button type="button" class="chip" id="btnCopy">複製今天的連結</button>
+    </div>
+    <header>
+      <h1 id="title" aria-label="N5 日文練習"><span>N</span><span>5</span><span> </span><span class="b">日</span><span class="b">文</span><span class="b">練</span><span class="b">習</span></h1>
+      <p class="lead">先選今天的課程和範圍，再照「看 → 認 → 打 → 比」的順序練習。</p>
+    </header>
+
+    <div class="manual" id="manual" hidden>
+      <label for="manualLink">無法自動複製，請長按或選取下面的連結手動複製：</label>
+      <input id="manualLink" readonly>
+    </div>
+    <div id="picker"></div>
+
+    <h2 class="sec" id="hSteps">開始練習</h2>
+    <div class="steps" id="steps"></div>
+
+    <footer class="credit" id="credit"></footer>
+  </div>
+</div><!-- /homeView -->
+<main id="playView" hidden></main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="js/core/registry.js"></script>
+<script src="data/packs.js"></script>
+<script src="js/core/scope.js"></script>
+<script src="js/core/jp.js"></script>
+<script src="js/core/util.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/picker.js"></script>
+<!-- 打字共用元件：判定與設定 → 鍵盤 → 一題的顯示（③打、掉落方塊等共用） -->
+<script src="js/core/typer.js"></script>
+<script src="js/core/keyboard.js"></script>
+<script src="js/core/typebox.js"></script>
+<script src="js/core/app.js"></script>
+<!-- 玩法：一個玩法一個檔；加新玩法就在這裡加一行（按鈕順序依各檔的 step） -->
+<script src="js/activities/browse.js"></script>
+<script src="js/activities/quiz.js"></script>
+<script src="js/activities/typing.js"></script>
+<script src="js/activities/battle-link.js"></script>
+<!-- 附加玩法（步驟下面那一行「練完想放鬆」） -->
+<script src="js/activities/fall.js"></script>
+<!-- 首頁的卡片示意與動畫：Anime.js 載不到時卡片照樣畫出來，只是不會動 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="js/home-fx.js"></script>
+<script>
+/* 首頁
+   - 選範圍元件在 js/core/picker.js（玩法裡的「範圍」小面板也是同一份）；範圍的邏輯在 js/core/scope.js。
+   - 步驟按鈕由各玩法檔（js/activities/*.js）向 JP_APP 登記後自動產生；進入玩法、上一頁等流程在 js/core/app.js。 */
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var esc=JP_UTIL.esc, toast=JP_UI.toast;
+var FX=window.HOME_FX||{steps:function(){},changed:function(){},pop:function(){},intro:function(){}};   // 動畫非必要
+
+var state={scope:null,pack:null};   // 目前的範圍與課程包（pack 是 null＝載入中或載入失敗）
+
+var picker=JP_PICKER.create($('picker'),{
+  live:true,   // 每次改動都記住、同步網址
+  onChange:function(scope,pack){state.scope=scope;state.pack=pack;$('manual').hidden=true;paint();FX.changed(scope,pack)}
+});
+
+function paint(){
+  var ok=!!state.pack;
+  $('btnCopy').disabled=!ok;
+  if(!ok){$('steps').innerHTML='';return}
+  JP_APP.paintSteps($('steps'),state.scope);
+  FX.steps($('steps'));
+  $('credit').innerHTML=state.pack.credit||'';   // credit 是課程檔裡的 HTML（含連結），由老師維護
+}
+
+$('btnCopy').addEventListener('click',function(){
+  if(!state.pack)return;
+  var url=JP_SCOPE.link(state.scope), c=JP_SCOPE.count(state.scope);
+  JP_UI.copyText(url).then(function(done){
+    if(done){toast(c.units?'已複製今天的連結':'已複製（但目前一個小單元都沒選）');$('manual').hidden=true;FX.pop($('btnCopy'));return}
+    var i=$('manualLink');i.value=url;$('manual').hidden=false;i.focus();i.select();try{i.setSelectionRange(0,url.length)}catch(e){}
+  });
+});
+
+FX.intro();
+
+JP_APP.start({
+  home:$('homeView'), play:$('playView'),
+  state:function(){return {scope:state.scope,pack:state.pack}},
+  // 玩法裡的「範圍」小面板按套用：記住、同步網址、首頁也換成新範圍
+  apply:function(scope,pack){
+    state.scope=JP_SCOPE.clean(scope);state.pack=pack;
+    JP_SCOPE.save(state.scope);JP_SCOPE.syncUrl(state.scope);
+    picker.set(state.scope,pack);paint();
+  },
+  onHome:function(){paint()}
+});
+
+JP_SCOPE.resolve().then(function(r){
+  picker.note(r.notes.join('；'));
+  state.scope=JP_SCOPE.clean(r.scope);state.pack=r.pack;
+  JP_SCOPE.save(state.scope);JP_SCOPE.syncUrl(state.scope);
+  picker.set(state.scope,r.pack);paint();FX.changed(state.scope,r.pack);
+  JP_APP.route();   // 網址有 &go=玩法id 就直接進入
+},function(e){
+  picker.note(e.message||String(e));$('btnCopy').disabled=true;
+});
+})();
+</script>
+</body>
+</html>

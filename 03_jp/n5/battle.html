@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>日文打字對戰</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 版面：首頁（開房／加入）→ 大廳 → 比賽（上方所有人進度條＋自己的題目＋鍵盤）或看板（大螢幕用）→ 名次 */
+:root{
+  --paper:#f3f4ef; --card:#ffffff; --ink:#1b2430; --muted:#6a7482; --line:#d8dbd4;
+  --blue:#1c5fd6; --ok:#23805a; --bad:#cf4028; --key:#ffffff; --key2:#dfe2dc; --soft:#e7eaf3;
+  --p0:#1c5fd6; --p1:#cf4028; --p2:#23805a; --p3:#b7791f;
+  --jp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  --ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+    --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --key:#2a323b; --key2:#1d232a; --soft:#232b36;
+    --p0:#72a6ff; --p1:#ff7b64; --p2:#5cc596; --p3:#e3b25a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#13171c; --card:#1b2128; --ink:#e8ebee; --muted:#8e98a4; --line:#2c343d;
+  --blue:#72a6ff; --ok:#5cc596; --bad:#ff7b64; --key:#2a323b; --key2:#1d232a; --soft:#232b36;
+  --p0:#72a6ff; --p1:#ff7b64; --p2:#5cc596; --p3:#e3b25a;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--ui);display:flex;flex-direction:column;
+  touch-action:manipulation;-webkit-text-size-adjust:100%;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+[hidden]{display:none!important}
+.screen{flex:1;min-height:0;display:flex;flex-direction:column}
+.scroll{overflow:auto;padding:20px 16px 28px}
+.col{max-width:520px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:30px;font-weight:900;margin:0;line-height:1.2}
+h2{font-size:16px;margin:0;color:var(--muted);font-weight:500}
+p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.box h3{margin:0;font-size:17px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.in{flex:1 1 120px;min-width:0;padding:11px 12px;border-radius:10px;border:1px solid var(--muted);background:var(--paper);font-size:17px}
+.in.code{font-size:24px;letter-spacing:.3em;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+select.in{font-size:15px;flex:0 1 auto}
+.go{background:var(--blue);color:#fff;border:0;border-radius:11px;padding:12px 16px;font-size:16px;font-weight:700;flex:1 1 auto}
+.go.alt{background:none;color:var(--blue);border:1px solid var(--blue)}
+.go:disabled{opacity:.45;cursor:default}
+:root[data-theme="dark"] .go:not(.alt){color:#0d1420}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .go:not(.alt){color:#0d1420}}
+.msg{color:var(--bad);font-size:14px;min-height:1.4em}
+.bigcode{font-size:64px;font-weight:900;letter-spacing:.18em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.1}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.plist li{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:17px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--muted)}
+.plist small{margin-left:auto;color:var(--muted);font-size:13px}
+.off{opacity:.45}
+
+/* 主機控制列 */
+.hostbar{display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:center;background:var(--card)}
+.hostbar span{font-size:13px;color:var(--muted);margin-right:auto;font-variant-numeric:tabular-nums}
+.hostbar button{border:1px solid var(--muted);background:var(--paper);border-radius:9px;padding:7px 12px;font-size:14px}
+.hostbar button.pri{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+
+/* 比賽：上方的進度條 */
+.strip{display:flex;flex-direction:column;gap:3px;padding:6px 12px;border-bottom:1px solid var(--line)}
+.lane{display:grid;grid-template-columns:5.2em 1fr 3.2em;gap:8px;align-items:center;font-size:13px;font-variant-numeric:tabular-nums}
+.lane b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lane.me b{text-decoration:underline}
+.track{height:9px;border-radius:5px;background:var(--soft);overflow:hidden}
+.fill{height:100%;width:0;border-radius:5px;transition:width .25s linear}
+.lane span{text-align:right;color:var(--muted)}
+.opts{display:flex;gap:6px;padding:6px 12px;align-items:center;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:5px 9px;font-size:13px}
+.chip[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);font-weight:700}
+.opts select{font-size:13px;padding:5px 6px;border-radius:9px;border:1px solid var(--line);background:var(--card)}
+.opts .q{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stage{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:6px 16px;text-align:center;position:relative}
+.tag{color:var(--muted);font-size:13px}
+.sent{font-family:var(--jp);font-weight:700;font-size:clamp(28px,7.6vw,52px);line-height:1.9;text-wrap:balance}
+.nofuri .sent{line-height:1.45}
+.tok{border-bottom:4px solid transparent;margin:0 .04em}
+.tok.g{color:var(--blue)} .tok.cur{border-bottom-color:var(--muted)} .tok.done{border-bottom-color:var(--ok)}
+rt{font-size:.4em;font-weight:500;color:var(--muted);font-family:var(--jp)}
+.nofuri rt{display:none}
+.zh{color:var(--muted);font-size:16px}
+.typed{font-family:var(--jp);font-size:clamp(22px,5.6vw,32px);display:flex;flex-wrap:wrap;justify-content:center;gap:3px;min-height:1.5em}
+.typed span{min-width:.95em;border-bottom:2px solid var(--line);line-height:1.3}
+.typed .ok{color:var(--ok);border-bottom-color:var(--ok)} .typed .pend{color:var(--muted);border-bottom-color:var(--muted)}
+.typed .next{border-bottom-color:var(--ink)}
+.typed .buf{color:var(--blue);border-bottom-color:var(--blue);font-family:var(--ui);padding:0 2px}
+.shake{animation:shake .22s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion: reduce){.shake{animation:none}}
+.count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:120px;font-weight:900;color:var(--blue);background:color-mix(in srgb,var(--paper) 88%,transparent);z-index:3}
+.wait{font-size:20px;font-weight:700}
+
+/* 槍戰：場地與小人 */
+.arena{position:relative;overflow:hidden}
+.arena.row{height:86px;border-bottom:1px solid var(--line)}
+.arena.ring{flex:1;min-height:180px;background:var(--soft);border-radius:16px}
+.av{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;font-size:12px;line-height:1.15;white-space:nowrap}
+.av svg{width:34px;height:38px;fill:var(--c);transition:transform .2s,opacity .2s}
+.av b{max-width:6em;overflow:hidden;text-overflow:ellipsis}
+.av.me b{text-decoration:underline}
+.av i{font-style:normal;color:var(--bad);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.av.out svg{opacity:.35;transform:rotate(90deg)} .av.out i{color:var(--muted)}
+.av.off{opacity:.5}
+.av.fire svg{animation:recoil .28s}
+.av.hit svg{animation:hitf .45s}
+@keyframes recoil{40%{transform:translateX(-5px) rotate(-10deg)}}
+@keyframes hitf{20%,60%{fill:var(--bad);transform:translateY(-3px)}40%{transform:translateX(4px)}}
+.ring .av{font-size:clamp(15px,2vw,24px)}
+.ring .av svg{width:clamp(54px,8vw,110px);height:clamp(60px,9vw,122px)}
+.shot{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--card);z-index:2}
+.ring .shot{width:18px;height:18px;margin:-9px 0 0 -9px}
+/* 槍戰：題目卡 */
+.gstage{flex:1;min-height:0;overflow:auto;position:relative;padding:8px 12px;display:flex;flex-direction:column}
+.cards{display:flex;flex-direction:column;gap:6px;margin:auto 0;width:100%;max-width:560px;align-self:center}
+.gc{background:var(--card);border:2px solid var(--line);border-left:8px solid var(--c);border-radius:12px;padding:6px 10px;text-align:left;position:relative;overflow:hidden;
+  display:block;width:100%;cursor:pointer;font-family:var(--ui)}
+.gc.on{border-color:var(--c);cursor:default;text-align:center;padding:8px 10px 10px}
+.gc .lb{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.gc .lb em{font-style:normal;color:var(--bad);font-weight:700;font-variant-numeric:tabular-nums}
+.gc .mini{font-family:var(--jp);font-weight:700;font-size:20px;display:flex;gap:10px;align-items:baseline;white-space:nowrap;overflow:hidden}
+.gc .mini small{font-family:var(--ui);font-weight:400;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.gc .mini u{text-decoration:none;color:var(--ok);font-size:14px}
+.gc .sent{font-size:clamp(24px,6.6vw,42px);line-height:1.8}
+.nofuri .gc .sent{line-height:1.4}
+.gc .typed{font-size:clamp(20px,5vw,28px);margin-top:2px}
+.gc .zh{font-size:14px}
+.gc .tm{position:absolute;left:0;bottom:0;height:4px;background:var(--bad);width:var(--w);animation:shrink var(--d) linear forwards}
+@keyframes shrink{to{width:0}}
+.cards.one{flex-direction:row;flex-wrap:wrap;justify-content:center}
+.cards.one .gc{flex:1 1 100%;order:2}
+.pend1{order:1;position:relative;display:inline-flex;align-items:center;gap:6px;width:76px;height:22px;border-radius:11px;background:var(--card);border:1px solid var(--line);overflow:hidden;padding:0 8px}
+.pend1 i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.pend1 .tm{position:absolute;left:0;bottom:0;height:4px;background:var(--bad);width:var(--w);animation:shrink var(--d) linear forwards}
+.gc.atk{border-left-color:var(--muted)}
+.gc.atk.on{border-color:var(--ink)}
+.gc.atk.on.danger{border-color:var(--bad)}
+.gc.danger .lb span{color:var(--bad);font-weight:700}
+.gstage.hurt{animation:hurt .35s}
+@keyframes hurt{50%{background:color-mix(in srgb,var(--bad) 30%,var(--paper))}}
+.cfgrid{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;font-size:14px}
+.cfgrid .in{font-size:14px;padding:8px}
+.rng{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.rng input{flex:1;min-width:0;accent-color:var(--blue)}
+.rng b{color:var(--ink);min-width:2.6em;text-align:right}
+.bl .hp{color:var(--bad);font-size:.9em;letter-spacing:.04em}
+.bl .hp small{color:var(--muted);font-size:.6em;margin-left:.8em;letter-spacing:0}
+
+.qbtn{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--muted);background:var(--card);font-size:20px;font-weight:700;line-height:1}
+.help{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--paper) 92%,transparent);overflow:auto;padding:16px}
+.help .box{max-width:520px;margin:0 auto}
+.help h4{margin:8px 0 0;font-size:16px}
+.help ol,.help ul{margin:0;padding-left:1.3em;color:var(--muted);font-size:14px;line-height:1.65}
+.help b{color:var(--ink)}
+.key.hint{box-shadow:0 0 0 3px var(--blue)}
+.warm{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);line-height:1.45}
+.warm b{color:var(--ink)}
+.warm span{flex:1;min-width:0}
+.warm button{flex:none;border:1px solid var(--muted);background:var(--card);border-radius:9px;padding:6px 10px;font-size:13px}
+
+/* 鍵盤 */
+.kbwrap{background:var(--key2);padding:7px 6px calc(7px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.kb{display:grid;gap:6px;margin:0 auto;touch-action:none;user-select:none;-webkit-user-select:none}
+.kb.k12{grid-template-columns:repeat(5,1fr);max-width:520px}
+.kb.k50{grid-template-columns:repeat(10,1fr);max-width:720px;gap:4px}
+.kb.rom{display:flex;flex-direction:column;gap:6px;max-width:560px}
+.rom .rw{display:flex;gap:4px;justify-content:center}
+.rom .rw.r2{padding:0 5%}
+.key{background:var(--key);border:0;border-radius:8px;height:50px;font-family:var(--jp);font-size:24px;font-weight:500;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;padding:0;box-shadow:0 1px 0 rgba(0,0,0,.28);-webkit-tap-highlight-color:transparent}
+.key small{font-size:10px;color:var(--muted);letter-spacing:.12em;margin-top:4px;font-weight:500}
+.key.fn{background:transparent;border:1px solid var(--muted);box-shadow:none;font-family:var(--ui);font-size:15px}
+.key.tall{grid-row:span 2;height:auto}
+.key.down{filter:brightness(.86)}
+.k50 .key{height:42px;font-size:21px;border-radius:6px}
+.k50 .key.fn{font-size:12px}
+.rom .key{flex:1 1 0;height:44px;font-family:var(--ui);font-size:20px;min-width:0;border-radius:6px}
+.rom .key.w{flex:1.5 1 0;font-size:15px}
+.pop5{position:fixed;z-index:9;display:none;grid-template-columns:repeat(3,1fr);pointer-events:none}
+.pop5 span{display:flex;align-items:center;justify-content:center;font-family:var(--jp);font-size:25px;background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.pop5 span.e{visibility:hidden}
+.pop5 span.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* 看板（大螢幕） */
+.board{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px clamp(16px,4vw,48px);gap:14px;position:relative}
+.bhead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.bhead h1{font-size:clamp(26px,4vw,44px)}
+.bhead .rc{font-size:clamp(18px,2.4vw,28px);color:var(--muted);font-variant-numeric:tabular-nums}
+.bhead .rc b{color:var(--ink);letter-spacing:.14em}
+.blanes{flex:1;min-height:0;display:flex;flex-direction:column;gap:clamp(10px,2vh,22px);justify-content:center}
+.bl{display:grid;grid-template-columns:2.2em minmax(4em,9em) 1fr 6.5em;gap:clamp(8px,1.6vw,20px);align-items:center;font-size:clamp(18px,2.6vw,34px);font-variant-numeric:tabular-nums}
+.bl .rk{font-weight:900;text-align:center;color:var(--muted)}
+.bl .rk.win{color:var(--ok)}
+.bl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bl .track{height:clamp(22px,4.4vh,44px);border-radius:10px}
+.bl .fill{border-radius:10px}
+.bl .st{text-align:right;font-size:.62em;color:var(--muted);line-height:1.3}
+.bl .st i{font-style:normal;display:block;color:var(--ink);font-weight:700;font-size:1.25em}
+.bempty{font-size:22px;color:var(--muted);text-align:center}
+
+/* 名次 */
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rank li{display:grid;grid-template-columns:2em 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:18px;font-variant-numeric:tabular-nums}
+.rank li.me{border-color:var(--blue);border-width:2px}
+.rank .n{font-weight:900;font-size:22px}
+.rank small{color:var(--muted);font-size:13px;display:block}
+.rank .t{text-align:right;font-weight:700}
+.credit{font-size:12px;color:var(--muted)}
+.credit a{color:inherit}
+/* 題目範圍（課程包）*/
+a.go{display:block;text-align:center;text-decoration:none}
+.box h3 small{font-size:13px;color:var(--muted);font-weight:400;margin-left:.4em}
+.pname{color:var(--ink);font-weight:700}
+#scMore{border-top:1px solid var(--line);padding-top:8px}
+#scMore summary{cursor:pointer;color:var(--blue);font-size:14px}
+.sclist{max-height:min(46vh,380px);overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-right:2px}
+.scg{border:1px solid var(--line);border-radius:10px;padding:4px 10px 6px;margin:0;min-width:0}
+.scg legend{font-size:13px;color:var(--muted);padding:0 4px}
+.scg legend label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.scu{display:flex;gap:8px;align-items:center;font-size:14px;padding:4px 0;cursor:pointer}
+.scu span{min-width:0}
+.scu small{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+.sclist input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--blue);margin:0}
+</style>
+</head>
+<body class="nofuri">
+<div class="hostbar" id="hostbar" hidden>
+  <span id="hbInfo"></span>
+  <button type="button" id="hbStart" class="pri">開始比賽</button>
+  <button type="button" id="hbEnd">結束這局</button>
+  <button type="button" id="hbBack">回大廳</button>
+</div>
+
+<div class="opts" id="playOpts" hidden>
+  <button type="button" class="chip" id="cFuri" aria-pressed="false">平假名標音</button>
+  <button type="button" class="chip" id="cHint" aria-pressed="false">按鍵提示</button>
+  <select id="selKb" aria-label="鍵盤"><option value="rom">羅馬拼音</option><option value="k12">十二鍵</option><option value="k50">五十音</option></select>
+  <span class="q" id="qNo"></span>
+</div>
+
+<!-- 首頁 -->
+<section class="screen scroll" id="sHome">
+  <div class="col">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h1>日文打字對戰</h1><button type="button" class="qbtn" id="btnHelp" aria-label="教學說明">?</button></div>
+    <p>2 到 4 人連線對戰。可以比誰先打完，也可以玩單字槍戰。每個人用自己的手機或電腦，再開一台大螢幕當看板。</p>
+    <div class="box">
+      <h3>題目範圍</h3>
+      <p class="pname" id="homeScope">載入課程中…</p>
+      <p>開房後可以在大廳改課程和小單元。加入別人的房間時，一律用房主選的範圍。</p>
+      <a class="go alt" id="lnkHome" href="index.html">回練習頁</a>
+    </div>
+    <div class="box">
+      <h3>你的名字</h3>
+      <input class="in" id="inName" maxlength="8" placeholder="最多 8 個字" autocomplete="off" aria-label="你的名字">
+    </div>
+    <div class="box">
+      <h3>加入房間</h3>
+      <div class="row">
+        <input class="in code" id="inCode" inputmode="numeric" maxlength="4" placeholder="房號" autocomplete="off" aria-label="房號">
+        <select class="in" id="selJoinRole" aria-label="加入的身分"><option value="player">當選手</option><option value="board">當看板</option></select>
+      </div>
+      <button type="button" class="go" id="btnJoin">加入</button>
+    </div>
+    <div class="box">
+      <h3>開新房間</h3>
+      <div class="row">
+        <button type="button" class="go alt" id="btnHostPlay">開房，我也要比</button>
+        <button type="button" class="go alt" id="btnHostBoard">開房，這台當看板</button>
+      </div>
+      <p>老師用投影的電腦選「這台當看板」，學生輸入房號加入。</p>
+    </div>
+    <div class="box">
+      <h3>單人試玩</h3>
+      <button type="button" class="go alt" id="btnSolo">和電腦對手比一場</button>
+      <p>不用連線，用來試鍵盤和看比賽畫面長什麼樣子。</p>
+    </div>
+    <div class="msg" id="homeMsg" role="status"></div>
+    <div class="credit" id="credit1"></div>
+  </div>
+</section>
+
+<!-- 大廳 -->
+<section class="screen scroll" id="sLobby" hidden>
+  <div class="col">
+    <h2 id="lbTitle">房號</h2>
+    <div class="bigcode" id="lbCode">----</div>
+    <p id="lbHint" style="text-align:center"></p>
+    <ul class="plist" id="lbList"></ul>
+    <div class="box" id="lbScope">
+      <h3>題目範圍<small id="scRo">房主決定</small></h3>
+      <div class="row" id="scPackRow"><select class="in" id="scPack" aria-label="課程"></select></div>
+      <p class="pname" id="scSum"></p>
+      <details id="scMore"><summary id="scSummary">選小單元</summary>
+        <div class="row" id="scBtns" style="margin-top:8px"><button type="button" class="chip" data-sc="all">全選</button><button type="button" class="chip" data-sc="def">預設</button><button type="button" class="chip" data-sc="none">全不選</button></div>
+        <div class="sclist" id="scList"></div>
+      </details>
+    </div>
+    <div class="box" id="lbCfg" hidden>
+      <h3>比賽設定</h3>
+      <div class="row">
+        <select class="in" id="cfgMode" aria-label="比賽方式"></select>
+        <select class="in" id="cfgSrc" aria-label="題庫"><option value="g">句子</option><option value="w">單字</option></select>
+        <select class="in" id="cfgCount" aria-label="題數"><option value="5">5 題</option><option value="10" selected>10 題</option><option value="15">15 題</option></select>
+      </div>
+      <div class="cfgrid">
+        <label for="aFuri">平假名標音</label><select class="in" id="aFuri"><option value="off">全員不開</option><option value="on">全員開啟</option><option value="free">玩家自己選</option></select>
+        <label for="aHint">按鍵提示</label><select class="in" id="aHint"><option value="off">全員不開</option><option value="on">全員開啟</option><option value="free">玩家自己選</option></select>
+      </div>
+      <div class="cfgrid" id="cfgBot" hidden>
+        <label for="botLv">「電腦・難」的強度</label>
+        <div class="rng"><span>弱</span><input type="range" id="botLv" min="1" max="5" step="1" value="3" aria-describedby="botLvTxt"><span>強</span><b id="botLvTxt">中</b></div>
+      </div>
+      <div class="cfgrid" id="cfgGun" hidden>
+        <label for="gRule">規則</label><select class="in" id="gRule"><option value="simple">單純：一題接一題，子彈只是倒數</option><option value="complex">複雜：子彈各帶一題，最多四題同時顯示</option></select>
+        <label for="gHp">血量</label><select class="in" id="gHp"><option value="3">3 滴</option><option value="5">5 滴</option><option value="8">8 滴</option><option value="10">10 滴</option></select>
+        <label for="gFly">子彈飛行</label><select class="in" id="gFly"><option value="5">5 秒</option><option value="8">8 秒</option><option value="10">10 秒</option><option value="12">12 秒</option><option value="15">15 秒</option><option value="20">20 秒</option></select>
+        <label for="gFull">對手已有 3 顆時</label><select class="in" id="gFull"><option value="dmg">直接扣血</option><option value="void">這顆作廢</option></select>
+        <label for="gBsrc">子彈的題目</label><select class="in" id="gBsrc"><option value="same">攻擊者剛打完的那一題</option><option value="rand">另外隨機抽</option></select>
+        <label for="gBonus">解除子彈的獎勵</label><select class="in" id="gBonus"><option value="off">沒有</option><option value="on">下一發加速（可累積）</option></select>
+        <label for="gStep">每解除一顆加速</label><select class="in" id="gStep"><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option><option value="30">30%</option></select>
+        <label for="gMin">加速後最短飛行</label><select class="in" id="gMin"><option value="10">原本的 10%</option><option value="20">原本的 20%</option><option value="30">原本的 30%</option><option value="40">原本的 40%</option><option value="50">原本的 50%</option><option value="70">原本的 70%</option></select>
+      </div>
+    </div>
+    <div class="msg" id="lbMsg" role="status"></div>
+    <button type="button" class="go" id="btnStart2" hidden>開始比賽</button>
+    <button type="button" class="go alt" id="btnHostWarm" hidden>先熱身（自己練打字，不算成績）</button>
+    <button type="button" class="go alt" id="btnLeave">離開房間</button>
+    <a class="go alt" id="lnkLobby" href="index.html">回練習頁（同一個範圍）</a>
+    <div class="credit" id="credit2"></div>
+  </div>
+</section>
+
+<!-- 比賽（選手） -->
+<section class="screen" id="sRace" hidden>
+  <div class="strip" id="strip"></div>
+  <main class="stage" id="stage">
+    <div class="tag" id="tag"></div>
+    <div class="sent" id="sent" lang="ja"></div>
+    <div class="zh" id="zh"></div>
+    <div class="typed" id="typed" lang="ja"></div>
+    <div class="count" id="count" hidden>3</div>
+  </main>
+</section>
+
+<!-- 槍戰（選手） -->
+<section class="screen" id="sGun" hidden>
+  <div class="arena row" id="gArena"></div>
+  <main class="gstage" id="gstage">
+    <div class="cards" id="cards"></div>
+    <div class="count" id="gCount" hidden>3</div>
+  </main>
+</section>
+
+<!-- 看板 -->
+<section class="screen" id="sBoard" hidden>
+  <div class="board">
+    <div class="bhead"><h1 id="bTitle">打字對戰</h1><span class="rc">房號 <b id="bCode"></b></span><span class="rc" id="bInfo"></span><span class="rc" id="bPack"></span></div>
+    <div class="arena ring" id="bArena" hidden></div>
+    <div class="blanes" id="blanes"></div>
+    <div class="count" id="bCount" hidden>3</div>
+  </div>
+</section>
+
+<!-- 名次（選手） -->
+<section class="screen scroll" id="sResult" hidden>
+  <div class="col">
+    <h1 id="rsTitle">比賽結果</h1>
+    <ol class="rank" id="rsList"></ol>
+    <p id="rsHint">等主機開始下一局。</p>
+    <button type="button" class="go alt" id="btnLeave2">離開房間</button>
+  </div>
+</section>
+<div class="kbwrap" id="kbwrap" hidden><div class="kb rom" id="kb"></div></div>
+<div class="pop5" id="pop"></div>
+
+<!-- 教學說明 -->
+<div class="help" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="box">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 id="helpTitle" style="font-size:22px">怎麼玩</h3><button type="button" class="qbtn" id="btnHelpX" aria-label="關閉說明">×</button></div>
+    <h4>開始一場比賽</h4>
+    <ol>
+      <li>一個人按「開房」，畫面會出現 4 位數的房號。這個人是房主。</li>
+      <li>其他人輸入名字和房號，按「加入」。選手最多 4 人。</li>
+      <li>房主選好比賽方式，按上方的「開始比賽」，倒數 5 秒後一起開始。</li>
+      <li>等房主設定的時候，選手可以先在熱身房練打字、換鍵盤，不算成績。</li>
+    </ol>
+    <p>教室裡建議用投影的電腦開房並選「這台當看板」，大家就能在大螢幕上看到即時戰況。</p>
+    <h4>競速</h4>
+    <p>所有人打同樣的題目，先全部打完的人贏。上方的色條是每個人的進度。</p>
+    <h4>單字槍戰</h4>
+    <ul>
+      <li>打完題目就向所有對手各開一槍。</li>
+      <li>別人開槍時，你身上會多一顆<b>子彈</b>，帶著紅色倒數條。倒數結束前解除就沒事，來不及就扣一滴血。</li>
+      <li>身上最多 3 顆子彈。</li>
+      <li><b>單純規則</b>：畫面上一題接一題，題目不會因為子彈飛來而換掉。子彈只是倒數計時，顯示成題目上方會倒數的小標記。每打完一題：身上有子彈，就解除最快到的那一顆；身上沒有子彈，就向所有對手開槍。</li>
+      <li><b>複雜規則</b>：每顆子彈各帶一個題目，和攻擊題一起列出來，最多四題，點哪一張就打哪一張；新子彈飛來不會打斷你正在打的題目。</li>
+      <li>自己解除的子彈超過 20 顆之後，自己每開一槍，射出去的子彈就再快 5%，越到後面越快，所以比賽不會一直分不出勝負。</li>
+      <li>血量歸零就出局，留到最後的人贏。</li>
+    </ul>
+    <h4>打字方式</h4>
+    <p>用羅馬拼音打讀音，例如「わたし」打 watashi。助詞「は」打 ha。促音「っ」重複下一個子音，「ん」打 n 或 nn，長音「ー」按左下角。也可以換成十二鍵或五十音鍵盤。標點不用打。</p>
+    <button type="button" class="go" id="btnHelpOk">知道了</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- 課程包：清單與範圍。課程檔（data/*.js）由 JP_PACKS.load() 需要時才載入 -->
+<script src="js/core/registry.js"></script>
+<script src="data/packs.js"></script>
+<script src="js/core/scope.js"></script>
+<script>
+/* ======================================================================
+   日文打字對戰 — 架構與分階段規劃
+   ----------------------------------------------------------------------
+   題庫：改成從課程包取題（js/battle/bank.js 的 Bank 轉成舊的 {tag,zh,jp}）。
+     範圍放在 cfg.pack、cfg.units，由房主決定，隨 lobby／start 訊息同步。
+     因為多同步了範圍，房號前綴升為 n5battle-v2-（不會和舊版互連）。
+   結構（由下往上）：
+     Net     連線層。只負責「把訊息送到主機／送給所有人」。現在用 PeerJS（瀏覽器直連），
+             單人試玩用不連線的本機模式。之後要換成 Firebase 等，只要換這一層。
+     Host    主機邏輯。只有開房的那一台會跑：管理名單、發題目、收進度、算名次。
+     Client  每一台都會跑（主機自己也是）：收主機的訊息、切換畫面。
+     MODES   比賽方式的登記表。現在只有 race；之後的玩法在這裡加一筆。
+     Typing  打字引擎（和打字練習相同的判定與鍵盤）。
+
+   訊息（t 是種類）：
+     選手 → 主機：hello{name,role,token}   prog{kana,done,miss,fin,time}
+                 （槍戰）fire{item} 打完攻擊題   defuse{id} 解除一顆子彈
+     主機 → 大家：welcome{id,phase,…}  lobby{players,cfg}  start{items,total,mode}
+                 state{players}  end{players}  full{}
+                 （槍戰）bullet{id,from,to,item,dur}  gone{id}  hit{to,id,hp}
+     ※ 預留：hello.token（第二階段重連用）、start.mode（第三階段多種玩法用）
+
+   第一階段（已完成）：開房／加入、2〜4 人打字競賽、看板、名次、單人試玩（電腦對手）
+   槍戰第一步（這一版）：攻擊題、子彈、倒數、扣血、出局、勝負、看板場地；規則都在大廳可調
+   槍戰之後：調整平衡（血量、秒數、題目長短）、看板特效、指定目標、反彈等進階規則
+   第二階段：斷線重連 — 用 hello.token 認出是同一個人，主機把目前進度還給他（Host.hello 已留位置）
+             中途加入 — 看板現在就能中途加入；選手中途加入目前會先當觀眾，下一局才上場
+   第三階段：更多玩法 — MODES 已有 race、gun；之後加 time60（60 秒比分數）、fall（掉落方塊互丟）、quiz（測驗搶答）
+   第四階段：連線穩定性 — Net 換成雲端中繼（Firebase）；分組對抗；全班成績匯出 CSV
+   ====================================================================== */
+const CFG={ prefix:'n5battle-v2-', maxPlayers:4, countdown:5, maxSeconds:300, stateEvery:150,
+            gunSeconds:300,      // 槍戰一局最長幾秒，時間到比剩餘血量
+            maxBullets:3,        // 每個人身上最多幾顆子彈
+            grace:0.3,           // 子彈到時間後多等幾秒才判定命中（抵銷網路延遲）
+            surgeAfter:20, surgeStep:0.05,   // 底層規則（大廳不能調）：自己解除超過 20 顆後，自己之後每開一槍，射出去的子彈再快 5%，累計到「最短飛行」的上限
+            switchGrace:0.7,     // 單純規則自動換題後，幾秒內打在舊題目上的鍵仍然算數
+            perKana:0.6, freeKana:4,   // 子彈題超過 4 個假名時，每多一個假名多飛 0.6 秒
+            gunPoolMaxKana:16 }; // 槍戰的文法句只用這個長度以內的
+
+// ───── 假名與打字引擎（和打字練習相同）─────
+const hira=s=>s.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+const kata=c=>/[ぁ-ゖ]/.test(c)?String.fromCharCode(c.charCodeAt(0)+0x60):c;
+const CYC={};
+['かが','きぎ','くぐ','けげ','こご','さざ','しじ','すず','せぜ','そぞ','ただ','ちぢ','つっづ','てで','とど',
+ 'はばぱ','ひびぴ','ふぶぷ','へべぺ','ほぼぽ','あぁ','いぃ','うぅ','えぇ','おぉ','やゃ','ゆゅ','よょ'].forEach(g=>[...g].forEach(c=>CYC[c]=g));
+const base=c=>CYC[c]?CYC[c][0]:c;
+function parse(str){
+  return str.split('|').map(t=>{
+    const g=t.endsWith('*'); if(g)t=t.slice(0,-1);
+    const m=t.match(/^(.*?)\[(.*)\]$/); const text=m?m[1]:t;
+    const punct=/^[、。？！]$/.test(text);
+    const kana=!m&&/[ァ-ヶ]/.test(text)?hira(text):null;
+    return {text,ruby:m?m[2]:kana,g,read:punct?'':(m?m[2]:text)};
+  });
+}
+const RM={};
+(function(){
+  const V='aiueo';
+  [...'あいうえお'].forEach((c,i)=>RM[c]=[V[i]]);
+  const rows={k:'かきくけこ',s:'さしすせそ',t:'たちつてと',n:'なにぬねの',h:'はひふへほ',m:'まみむめも',r:'らりるれろ',
+              g:'がぎぐげご',z:'ざじずぜぞ',d:'だぢづでど',b:'ばびぶべぼ',p:'ぱぴぷぺぽ'};
+  for(const k in rows)[...rows[k]].forEach((c,i)=>RM[c]=[k+V[i]]);
+  RM['し'].unshift('shi');RM['ち'].unshift('chi');RM['つ'].unshift('tsu');RM['ふ'].unshift('fu');RM['じ'].unshift('ji');
+  RM['や']=['ya'];RM['ゆ']=['yu'];RM['よ']=['yo'];RM['わ']=['wa'];RM['を']=['wo'];RM['ー']=['-'];
+  [...'ぁぃぅぇぉ'].forEach((c,i)=>RM[c]=['x'+V[i],'l'+V[i]]);
+  RM['ゃ']=['xya','lya'];RM['ゅ']=['xyu','lyu'];RM['ょ']=['xyo','lyo'];RM['っ']=['xtu','ltu','xtsu'];
+  const Y={き:['ky'],ぎ:['gy'],に:['ny'],ひ:['hy'],び:['by'],ぴ:['py'],み:['my'],り:['ry'],し:['sh','sy'],じ:['j','jy','zy'],ち:['ch','ty','cy'],ぢ:['dy']};
+  for(const k in Y)[['ゃ','a'],['ゅ','u'],['ょ','o']].forEach(([s,v])=>RM[k+s]=Y[k].map(p=>p+v));
+})();
+function cands(T,n){
+  const out=[],c=T[n];if(c===undefined)return out;
+  const two=T.substr(n,2);if(two.length===2&&RM[two])RM[two].forEach(r=>out.push({r,len:2}));
+  if(c==='ん'){const nx=n+1<T.length?cands(T,n+1):[];
+    if(!nx.some(x=>'aiueoyn'.includes(x.r[0])))out.push({r:'n',len:1,nflag:true});
+    out.push({r:'nn',len:1},{r:"n'",len:1},{r:'xn',len:1});
+  }else if(c==='っ'){const seen={};
+    cands(T,n+1).forEach(x=>{const f=x.r[0];if(!'aiueon-'.includes(f)&&!seen[f]){seen[f]=1;out.push({r:f,len:1})}});
+    RM['っ'].forEach(r=>out.push({r,len:1}));
+  }else (RM[c]||[]).forEach(r=>out.push({r,len:1}));
+  return out;
+}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const store={get(k,d){try{const v=localStorage.getItem('kb_'+k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('kb_'+k,v)}catch(e){}}};
+const kanaLen=jp=>parse(jp).reduce((n,t)=>n+t.read.length,0);
+
+// ───── 比賽方式登記表（第三階段在這裡加新玩法）─────
+const MODES={
+  race:{ name:'競速：先打完的贏', ready:true,
+    // 主機出題：回傳 [{tag,zh,jp}]，所有人拿到同一份
+    items(cfg){return Bank.race(cfg,+cfg.count)},      // 抽題規則見 bank.js 的 Bank.race
+    // 名次：打完的照時間，沒打完的照進度
+    rank(ps){return ps.slice().sort((a,b)=>(b.fin-a.fin)||(a.fin?a.time-b.time:b.kana-a.kana))},
+  },
+  gun:{ name:'單字槍戰：打完一題就開槍', ready:true,
+    // 題目池：主機開局時發給大家，每個人各自洗牌當攻擊題
+    pool(cfg){return Bank.pool(cfg)},                  // 句子只取 CFG.gunPoolMaxKana 以內，見 Bank.pool
+    // 名次：還活著的照血量，出局的越晚出局越前面
+    rank(ps){return ps.slice().sort((a,b)=>(a.out-b.out)||(a.out?b.outAt-a.outAt:(b.hp-a.hp)||(b.fired-a.fired)))},
+  },
+  time60:{ name:'限時 60 秒比分數（之後開放）', ready:false },
+  fall:{ name:'掉落方塊對戰（之後開放）', ready:false },
+  quiz:{ name:'測驗搶答（之後開放）', ready:false },
+};
+
+// ───── 我自己 ─────
+const ME={ id:null, name:'', role:'player',
+  token:(()=>{let t=store.get('token','');if(!t){t=Math.random().toString(36).slice(2,10);store.set('token',t)}return t})() };   // token：第二階段重連時用來認人
+
+// ───── 輔助（平假名標音、按鍵提示）：房主決定全員開、全員關，或讓玩家自己選 ─────
+const Aid={
+  furi:false,hint:false,
+  mine:{furi:store.get('furi','0')==='1',hint:store.get('hint','0')==='1'},      // 「自己選」時記住個人的選擇
+  apply(){
+    const c=Client.cfg||{};
+    [['furi','cFuri'],['hint','cHint']].forEach(([k,id])=>{const pol=c[k]||'off';
+      this[k]=pol==='on'?true:pol==='off'?false:this.mine[k];
+      $(id).hidden=pol!=='free';$(id).setAttribute('aria-pressed',this[k])});
+    document.body.classList.toggle('nofuri',!this.furi);showHint();
+  },
+  toggle(k){this.mine[k]=!this.mine[k];store.set(k,this.mine[k]?'1':'0');this.apply()},
+};
+function showHint(){
+  document.querySelectorAll('.key.hint').forEach(k=>k.classList.remove('hint'));
+  if(!Aid.hint||$('kbwrap').hidden)return;
+  const g=IN().target();if(!g)return;const T=g.T,typed=g.typed,buf=g.buf,n=typed.length;let el=null;
+  if(Typing.kb==='rom'){if(n<T.length){const c=cands(T,n).find(x=>x.r.startsWith(buf));if(c)el=document.querySelector('.key[data-r="'+c.r[buf.length]+'"]')}}
+  else if(n&&typed[n-1]!==T[n-1])el=document.querySelector('.key[data-a="mod"]');
+  else if(n<T.length){const b=base(T[n]);el=[...document.querySelectorAll('.key[data-f],.key[data-c]')].find(k=>(k.dataset.f||k.dataset.c).includes(b))}
+  if(el)el.classList.add('hint');
+}
+
+// ───── Net：連線層 ─────
+const Net={
+  peer:null, conns:{}, conn:null, isHost:false, solo:false,
+  available(){return typeof window.Peer==='function'},
+  // 開房：用「前綴＋房號」當作這台的位址
+  host(code,onReady,onError){
+    this.isHost=true;this.solo=false;
+    const peer=this.peer=new Peer(CFG.prefix+code);
+    peer.on('open',()=>onReady());
+    peer.on('connection',c=>{
+      c.on('open',()=>{this.conns[c.peer]=c});
+      c.on('data',m=>Host.recv(c.peer,m));
+      c.on('close',()=>{delete this.conns[c.peer];Host.drop(c.peer)});
+    });
+    peer.on('error',e=>onError(e&&e.type||'error'));
+  },
+  join(code,onReady,onError){
+    this.isHost=false;this.solo=false;
+    const peer=this.peer=new Peer();
+    peer.on('open',()=>{
+      const c=this.conn=peer.connect(CFG.prefix+code,{reliable:true});
+      c.on('open',()=>onReady());
+      c.on('data',m=>Client.recv(m));
+      c.on('close',()=>Client.lost());
+    });
+    peer.on('error',e=>onError(e&&e.type||'error'));
+  },
+  local(){this.isHost=true;this.solo=true;this.peer=null},      // 單人試玩：不連線
+  toHost(m){if(this.isHost)Host.recv('host',m);else if(this.conn&&this.conn.open)this.conn.send(m)},
+  to(id,m){if(id==='host')Client.recv(m);else{const c=this.conns[id];if(c&&c.open)c.send(m)}},
+  toAll(m){for(const id in this.conns){const c=this.conns[id];if(c.open)c.send(m)}Client.recv(m)},
+  close(){try{if(this.peer)this.peer.destroy()}catch(_){}this.peer=null;this.conn=null;this.conns={};this.isHost=false;this.solo=false},
+};
+
+// ───── Host：主機邏輯（只有開房的那台會用到）─────
+const Host={
+  room:null, timer:0, lastPush:0, pushT:0, bots:[],
+  open(code){this.room={code,phase:'lobby',cfg:{mode:'race',src:'g',count:10,furi:'off',hint:'off',rule:'simple',hp:5,fly:8,full:'dmg',bsrc:'same',bonus:'off',step:5,min:20,pack:Bank.local.pack,units:Bank.local.units.slice()},
+                        players:{},order:[],items:[],total:0,t0:0,pool:[],bullets:{},bid:0,defTotal:0,surge:0};Bank.fixSrc(this.room.cfg)},
+  list(){const r=this.room;return r.order.map(id=>r.players[id])},
+  racers(){return this.list().filter(p=>p.role==='player'&&!p.spect)},
+  recv(id,m){
+    const r=this.room;if(!r||!m)return;
+    if(m.t==='hello')this.hello(id,m);
+    else if(m.t==='fire')this.fire(id,m);
+    else if(m.t==='defuse')this.defuse(id,m);
+    else if(m.t==='prog'){const p=r.players[id];if(!p||r.phase!=='race'||r.cfg.mode!=='race'||p.fin)return;
+      p.kana=m.kana;p.done=m.done;p.miss=m.miss;if(m.fin){p.fin=true;p.time=m.time}
+      this.push();this.checkEnd();}
+  },
+  hello(id,m){
+    const r=this.room,role=m.role==='board'?'board':'player';
+    // 第二階段：這裡用 m.token 找出斷線前的那一筆，把 id 換成新的、進度原樣還給他
+    if(role==='player'&&this.list().filter(p=>p.role==='player'&&p.online).length>=CFG.maxPlayers){Net.to(id,{t:'full'});return}
+    r.players[id]={id,name:String(m.name||'').slice(0,8)||'玩家',role,token:m.token||'',online:true,bot:!!m.bot,
+                   kana:0,done:0,miss:0,fin:false,time:0,spect:role==='player'&&r.phase!=='lobby',
+                   hp:0,out:false,outAt:0,nb:0,fired:0,defused:0,taken:0,boost:0,surge:0};
+    if(!r.order.includes(id))r.order.push(id);
+    Net.to(id,{t:'welcome',id,code:r.code,phase:r.phase,surge:r.surge,cfg:r.cfg,players:this.pub(),items:r.phase==='race'?r.items:null,total:r.total,
+               bullets:Object.values(r.bullets).map(b=>({id:b.id,from:b.from,to:b.to,dur:b.dur,left:Math.max(0,(b.end-performance.now())/1000)}))});
+    this.pushLobby();
+  },
+  drop(id){const r=this.room;if(!r||!r.players[id])return;
+    if(r.phase==='lobby'){delete r.players[id];r.order=r.order.filter(x=>x!==id)}else r.players[id].online=false;
+    this.pushLobby();this.checkEnd()},
+  pub(){return this.list().map(p=>({id:p.id,name:p.name,role:p.role,online:p.online,kana:p.kana,done:p.done,miss:p.miss,fin:p.fin,time:p.time,spect:p.spect,
+                                    hp:p.hp,out:p.out,outAt:p.outAt,nb:p.nb,fired:p.fired,defused:p.defused,taken:p.taken,boost:p.boost,surge:p.surge}))},
+  pushLobby(){const r=this.room;Net.toAll(r.phase==='lobby'?{t:'lobby',players:this.pub(),cfg:r.cfg,code:r.code}:{t:'state',players:this.pub(),surge:r.surge})},
+  push(){                                   // 進度更新不要太密
+    const now=performance.now();clearTimeout(this.pushT);
+    if(now-this.lastPush>=CFG.stateEvery){this.lastPush=now;Net.toAll({t:'state',players:this.pub(),surge:this.room.surge})}
+    else this.pushT=setTimeout(()=>this.push(),CFG.stateEvery);
+  },
+  setCfg(k,v){const c=this.room.cfg;c[k]=v;if(k==='mode')c.src=v==='gun'?'w':'g';Bank.fixSrc(c);this.pushLobby()},   // 槍戰預設用單字，競速預設用句子（範圍裡沒有就換另一種）
+  setScope(s){const c=this.room.cfg;c.pack=s.pack;c.units=s.units.slice();Bank.fixSrc(c);this.pushLobby()},     // 房主改範圍：放進 cfg，隨 lobby 訊息同步給大家
+  start(){
+    const r=this.room,mode=MODES[r.cfg.mode];if(!mode||!mode.ready||!Bank.ok(r.cfg))return;      // 範圍沒有題目就不能開始
+    this.list().forEach(p=>{p.kana=0;p.done=0;p.miss=0;p.fin=false;p.time=0;p.spect=false;
+      p.hp=+r.cfg.hp;p.out=false;p.outAt=0;p.nb=0;p.fired=0;p.defused=0;p.taken=0;p.boost=0;p.surge=0});
+    if(!this.racers().length)return;
+    this.clearBullets();r.defTotal=0;r.surge=0;
+    if(r.cfg.mode==='gun'){
+      r.pool=mode.pool(r.cfg);r.items=[];r.total=0;r.phase='race';r.t0=performance.now()+CFG.countdown*1000;
+      Net.toAll({t:'start',mode:'gun',cfg:r.cfg,pool:r.pool,items:[],total:0,players:this.pub()});
+      clearTimeout(this.timer);this.timer=setTimeout(()=>this.end(),(CFG.gunSeconds+CFG.countdown)*1000);
+      this.runGunBots();return;
+    }
+    r.items=mode.items(r.cfg);r.total=r.items.reduce((n,it)=>n+kanaLen(it.jp),0);r.phase='race';r.t0=performance.now()+CFG.countdown*1000;
+    Net.toAll({t:'start',items:r.items,total:r.total,mode:r.cfg.mode,cfg:r.cfg,players:this.pub()});
+    clearTimeout(this.timer);this.timer=setTimeout(()=>this.end(),(CFG.maxSeconds+CFG.countdown)*1000);
+    this.runBots();
+  },
+  // ── 槍戰：子彈、命中、解除全部由主機決定 ──
+  alive(){return this.racers().filter(p=>!p.out)},
+  clearBullets(){const r=this.room;for(const k in r.bullets)clearTimeout(r.bullets[k].timer);r.bullets={}},
+  fire(id,m){
+    const r=this.room,a=r.players[id];
+    if(!a||r.phase!=='race'||r.cfg.mode!=='gun'||a.out||a.spect||performance.now()<r.t0||!m.item)return;
+    a.fired++;
+    // 飛行時間的倍率 = 1 − 解除獎勵 − 底層加速（都是開槍的人自己的）；最低不低於「最短飛行」
+    const minF=(+r.cfg.min||20)/100;
+    if(a.defused>CFG.surgeAfter)a.surge=Math.min(1-minF,+(a.surge+CFG.surgeStep).toFixed(2));      // 底層規則：解除夠多的人，每開一槍再快 5%（只加速自己射出去的）
+    const factor=Math.max(minF,1-(r.cfg.bonus==='on'?a.boost:0)-a.surge);a.boost=0;                  // 解除獎勵用掉就歸零；底層加速不會歸零
+    this.alive().filter(p=>p.id!==id&&p.online).forEach(t=>{
+      if(t.nb>=CFG.maxBullets){if(r.cfg.full==='dmg')this.damage(t,id,null);return}
+      const item=r.cfg.bsrc==='rand'&&r.pool.length?r.pool[Math.random()*r.pool.length|0]:m.item;
+      const extra=r.cfg.rule==='complex'?Math.max(0,kanaLen(item.jp)-CFG.freeKana)*CFG.perKana:0;      // 單純規則的子彈不帶題目，飛行時間不看字數
+      const dur=(+r.cfg.fly+extra)*factor;
+      const b={id:'b'+(++r.bid),from:id,to:t.id,item,dur,end:performance.now()+dur*1000};
+      r.bullets[b.id]=b;t.nb++;
+      b.timer=setTimeout(()=>{if(r.bullets[b.id]){delete r.bullets[b.id];t.nb=Math.max(0,t.nb-1);this.damage(t,id,b.id)}},(dur+CFG.grace)*1000);
+      Net.toAll({t:'bullet',id:b.id,from:id,to:t.id,item,dur});
+      if(t.bot)this.botDefuse(t,b);
+    });
+    this.push();
+  },
+  defuse(id,m){
+    const r=this.room,b=r.bullets[m.id],p=r.players[id];
+    if(!b||!p||b.to!==id||r.phase!=='race')return;
+    clearTimeout(b.timer);delete r.bullets[b.id];p.nb=Math.max(0,p.nb-1);p.defused++;r.defTotal++;
+    if(r.cfg.bonus==='on')p.boost=Math.min(1-(+r.cfg.min||20)/100,+(p.boost+(+r.cfg.step||5)/100).toFixed(2));
+    Net.toAll({t:'gone',id:b.id,by:id});this.push();
+  },
+  damage(t,by,bid){
+    const r=this.room;if(t.out||r.phase!=='race')return;
+    t.hp--;t.taken++;Net.toAll({t:'hit',to:t.id,by,id:bid,hp:t.hp});
+    if(t.hp<=0){t.out=true;t.outAt=performance.now();
+      for(const k in r.bullets){const b=r.bullets[k];if(b.to===t.id){clearTimeout(b.timer);delete r.bullets[k];Net.toAll({t:'gone',id:k,by:null})}}
+      t.nb=0}
+    this.push();this.checkEnd();
+  },
+  checkEnd(){const r=this.room;if(r.phase!=='race')return;
+    if(r.cfg.mode==='gun'){const all=this.racers(),live=all.filter(p=>!p.out&&p.online);
+      if(live.length<=(all.length>1?1:0))setTimeout(()=>this.end(),700);return}
+    const live=this.racers().filter(p=>p.online);
+    if(live.length&&live.every(p=>p.fin))setTimeout(()=>this.end(),500)},
+  end(){const r=this.room;if(!r||r.phase!=='race')return;
+    clearTimeout(this.timer);this.stopBots();this.clearBullets();r.phase='result';
+    const ranked=MODES[r.cfg.mode].rank(this.racers());
+    Net.toAll({t:'end',mode:r.cfg.mode,players:ranked.map(p=>({id:p.id,name:p.name,kana:p.kana,done:p.done,miss:p.miss,fin:p.fin,time:p.time,online:p.online,
+      hp:p.hp,out:p.out,fired:p.fired,defused:p.defused,taken:p.taken,nb:0})),total:r.total,count:r.items.length})},
+  back(){const r=this.room;if(!r)return;clearTimeout(this.timer);this.stopBots();this.clearBullets();r.phase='lobby';
+    r.order=r.order.filter(id=>r.players[id].online);for(const id in r.players)if(!r.players[id].online)delete r.players[id];
+    this.list().forEach(p=>p.spect=false);this.pushLobby()},
+  // 單人試玩的電腦對手：照固定速度送進度
+  addBot(name,speed,skill){const id='bot'+this.bots.length;this.bots.push({id,speed,skill:skill||0.5,t:0});this.recv(id,{t:'hello',name,role:'player',bot:true})},
+  runBots(){const r=this.room;this.stopBots();
+    this.bots.forEach(b=>{let k=0;b.t=setInterval(()=>{
+      if(performance.now()<r.t0||r.phase!=='race')return;
+      k=Math.min(r.total,k+b.speed*(0.6+Math.random()*0.8)*0.3);
+      let left=Math.floor(k),done=0;for(const it of r.items){const n=kanaLen(it.jp);if(left>=n){left-=n;done++}else break}
+      const fin=k>=r.total;this.recv(b.id,{t:'prog',kana:Math.floor(k),done,miss:0,fin,time:fin?(performance.now()-r.t0)/1000:0});
+      if(fin)clearInterval(b.t)},300)})},
+  // 單人試玩的強度滑桿：只調最強的那個電腦（名單裡最後一個）。1〜5，3 是預設
+  botLevel:+store.get('botlv',3)||3,
+  BOT_LV:{1:['很弱',2.4,0.4],2:['偏弱',2.8,0.5],3:['中',3.2,0.6],4:['偏強',3.6,0.72],5:['很強',4.0,0.85]},     // 名稱、打字速度、解子彈成功率
+  setBotLevel(n){this.botLevel=n;store.set('botlv',n);const top=this.bots[this.bots.length-1],v=this.BOT_LV[n];if(top&&v){top.speed=v[1];top.skill=v[2]}},
+  // 槍戰的電腦對手：每隔一段時間開一槍；被射到時有時解得掉、有時來不及
+  runGunBots(){const r=this.room;this.stopBots();
+    this.bots.forEach(b=>{const every=22000/b.speed;
+      const loop=()=>{b.t=setTimeout(()=>{const p=r.players[b.id];if(r.phase!=='race'||!p||p.out)return;
+        if(r.pool.length)this.recv(b.id,{t:'fire',item:r.pool[Math.random()*r.pool.length|0]});loop()},every*(0.7+Math.random()*0.6)+(performance.now()<r.t0?CFG.countdown*1000:0))};
+      loop()})},
+  // 電腦解子彈：照等級有一個成功率（skill），身上每多一顆子彈再少 15%；成功的話在飛行時間的 45%〜95% 之間解掉
+  botDefuse(t,b){const bot=this.bots.find(x=>x.id===t.id);if(!bot)return;
+    const chance=Math.max(0.05,bot.skill-(t.nb-1)*0.15);
+    if(Math.random()<chance)setTimeout(()=>this.recv(t.id,{t:'defuse',id:b.id}),b.dur*(0.45+Math.random()*0.5)*1000)},
+  stopBots(){this.bots.forEach(b=>{clearInterval(b.t);clearTimeout(b.t)})},
+};
+
+// ───── Client：每一台的畫面流程 ─────
+const SCREENS=['sHome','sLobby','sRace','sGun','sBoard','sResult'];
+function show(id){SCREENS.forEach(s=>$(s).hidden=s!==id);const play=id==='sRace'||id==='sGun';$('playOpts').hidden=!play;$('kbwrap').hidden=!play}
+const Client={
+  code:'', phase:'home', players:[], cfg:{}, total:0, count:0, mode:'race', bullets:{}, hostWarm:false, surge:0,
+  recv(m){
+    if(m.t==='welcome'){ME.id=m.id;this.surge=m.surge||0;this.code=m.code;this.cfg=m.cfg;this.players=m.players;this.phase=m.phase;
+      if(m.phase==='lobby')this.lobby();else{this.total=m.total;this.mode=m.cfg.mode;this.bullets={};
+        (m.bullets||[]).forEach(b=>this.bullets[b.id]={id:b.id,from:b.from,to:b.to,dur:b.dur,end:performance.now()+b.left*1000});
+        if(ME.role==='board')Board.open();else this.spectate()}}
+    else if(m.t==='lobby'){this.players=m.players;this.cfg=m.cfg;this.code=m.code;this.phase='lobby';Gun.stop();this.lobby()}
+    else if(m.t==='start'){this.hostWarm=false;this.surge=0;if(m.cfg)this.cfg=m.cfg;this.players=m.players;this.total=m.total;this.count=m.items.length;this.phase='race';this.mode=m.mode;this.bullets={};
+      const me=this.players.find(p=>p.id===ME.id);
+      if(ME.role==='board'||!me){Board.open();Board.countdown()}else if(m.mode==='gun')Gun.begin(m.pool);else Typing.begin(m.items)}
+    else if(m.t==='state'){this.players=m.players;this.surge=m.surge||0;if(this.phase==='lobby')this.lobby();else{Strip.draw();Board.draw();Arena.sync();Gun.state()}}
+    else if(m.t==='bullet'){this.bullets[m.id]={id:m.id,from:m.from,to:m.to,dur:m.dur,end:performance.now()+m.dur*1000};
+      Arena.flash(m.from,'fire');Arena.shot(this.bullets[m.id]);if(m.to===ME.id)Gun.addBullet(m)}
+    else if(m.t==='gone'){delete this.bullets[m.id];Arena.remove(m.id);Gun.removeBullet(m.id)}
+    else if(m.t==='hit'){if(m.id){delete this.bullets[m.id];Arena.remove(m.id);Gun.removeBullet(m.id)}Arena.flash(m.to,'hit');if(m.to===ME.id)Gun.hurt()}
+    else if(m.t==='end'){this.phase='result';this.total=m.total;this.mode=m.mode||this.mode;this.bullets={};Typing.stop();Gun.stop();this.result(m.players)}
+    else if(m.t==='full'){leave('這個房間的選手已經滿了（最多 '+CFG.maxPlayers+' 人）。可以改選「當看板」加入。')}
+    hostbar();
+  },
+  lost(){if(this.phase!=='home')leave('和主機的連線中斷了。請重新加入房間。')},      // 第二階段：這裡改成自動重連
+  lobby(){
+    // 房主以外的選手：等房主設定時進熱身房，可以練打字、換鍵盤，不算成績
+    // 客人第一次收到房主的範圍時，先載入同一個課程包（只有熱身房和顯示範圍用得到），載完再畫一次
+    const loaded=Bank.ensure(this.cfg,()=>{if(this.phase==='lobby')this.lobby()});
+    if(ME.role==='player'&&(!Net.isHost||this.hostWarm)){
+      if(loaded&&Bank.ok(this.cfg)){Typing.warmup();return}
+      if(Typing.warm&&!$('sRace').hidden&&Bank.pending[this.cfg.pack])return;      // 房主換了課程、還在載入：先繼續練手上的題目，載完再換
+    }
+    if(Typing.warm)Typing.stop();
+    $('btnHostWarm').hidden=!(Net.isHost&&ME.role==='player');
+    $('btnStart2').hidden=!Net.isHost;$('btnStart2').disabled=this.players.filter(p=>p.role==='player'&&p.online).length<1||!Bank.ok(this.cfg);      // 設定完不用再捲回最上面
+    show('sLobby');$('lbCode').textContent=Net.solo?'單人':this.code;
+    $('lbTitle').textContent=Net.solo?'單人試玩':'房號';
+    const n=this.players.filter(p=>p.role==='player').length;
+    $('lbHint').textContent=Net.solo?'設定好就按「開始比賽」。':Net.isHost?'請大家輸入這個房號加入。選手 '+n+' / '+CFG.maxPlayers+' 人。':'已加入。房主設定中…';
+    $('lbList').innerHTML=this.players.map(p=>'<li class="'+(p.online?'':'off')+'"><span class="dot" style="background:'+color(p.id)+'"></span>'+esc(p.name)+
+      (p.id===ME.id?'（你）':'')+'<small>'+(p.role==='board'?'看板':'選手')+(p.id==='host'?'・主機':'')+'</small></li>').join('');
+    $('lbCfg').hidden=!Net.isHost;$('cfgBot').hidden=!Net.solo;
+    if(Net.solo){$('botLv').value=String(Host.botLevel);$('botLvTxt').textContent=Host.BOT_LV[Host.botLevel][0]}
+    if(Net.isHost){const c=this.cfg,gun=c.mode==='gun';Bank.srcSelect(c);$('cfgCount').value=String(c.count);$('cfgMode').value=c.mode;
+      $('cfgCount').hidden=gun;$('cfgGun').hidden=!gun;
+      $('gRule').value=c.rule;$('gBsrc').disabled=c.rule!=='complex';$('gHp').value=String(c.hp);$('gFly').value=String(c.fly);$('gFull').value=c.full;$('gBsrc').value=c.bsrc;$('gBonus').value=c.bonus;$('gStep').value=String(c.step);$('gMin').value=String(c.min);$('gMin').disabled=$('gStep').disabled=c.bonus!=='on';
+      $('aFuri').value=c.furi;$('aHint').value=c.hint}
+    $('lbMsg').textContent=Bank.problem(this.cfg)||(Net.isHost?'':'這一局：'+(MODES[this.cfg.mode]||{name:''}).name);
+    ScopeUI.render();
+  },
+  spectate(){Board.open()},                 // 比賽中途才加入的選手，這一局先看
+  result(ranked){
+    if(ME.role==='board'||!ranked.some(p=>p.id===ME.id)){Board.final(ranked);return}
+    show('sResult');
+    const mine=ranked.findIndex(p=>p.id===ME.id);
+    $('rsTitle').textContent=mine===0?'你是第 1 名！':'你是第 '+(mine+1)+' 名';
+    if(this.mode==='gun'){$('rsList').innerHTML=ranked.map((p,i)=>'<li class="'+(p.id===ME.id?'me':'')+'"><span class="n" style="color:'+color(p.id)+'">'+(i+1)+'</span>'+
+        '<span>'+esc(p.name)+'<small>開槍 '+p.fired+'・解除 '+p.defused+'・中彈 '+p.taken+(p.online?'':'・已離線')+'</small></span>'+
+        '<span class="t">'+(p.out?'出局':'剩 '+p.hp+' 滴')+'</span></li>').join('');
+      $('rsHint').textContent=Net.isHost?'按上方的「回大廳」可以再比一局。':'等主機開始下一局。';return}
+    $('rsList').innerHTML=ranked.map((p,i)=>'<li class="'+(p.id===ME.id?'me':'')+'"><span class="n" style="color:'+color(p.id)+'">'+(i+1)+'</span>'+
+      '<span>'+esc(p.name)+'<small>打錯 '+p.miss+' 次'+(p.online?'':'・已離線')+'</small></span>'+
+      '<span class="t">'+(p.fin?p.time.toFixed(1)+' 秒':'完成 '+Math.round(p.kana/Math.max(1,this.total)*100)+'%')+'</span></li>').join('');
+    $('rsHint').textContent=Net.isHost?'按上方的「回大廳」可以再比一局。':'等主機開始下一局。';
+  },
+};
+const color=id=>{const i=Client.players.filter(p=>p.role==='player').findIndex(p=>p.id===id);return 'var(--p'+((i<0?0:i)%4)+')'};
+const pct=p=>Math.round(Math.min(1,p.kana/Math.max(1,Client.total))*100);
+
+// 選手畫面上方的進度條
+const POL={off:'不開',on:'開啟',free:'自己選'};
+const Strip={draw(){
+  if($('sRace').hidden)return;
+  if(Typing.warm){const c=Client.cfg||{},names=Client.players.filter(p=>p.role==='player').map(p=>p.name).join('、');
+    $('strip').innerHTML='<div class="warm"><span><b>'+(Net.isHost?'熱身房・準備好就按上方的「開始比賽」':'熱身房・房主設定中…')+'</b>　'+(Net.solo?'單人試玩':'房號 '+esc(Client.code))+'<br>選手：'+esc(names)+
+      '<br>範圍：'+esc(Bank.summary(c))+'<br>這一局：'+esc((MODES[c.mode]||{name:''}).name)+(c.mode==='gun'?(c.rule==='complex'?'（複雜規則）':'（單純規則）'):'')+'　標音'+POL[c.furi||'off']+'・按鍵提示'+POL[c.hint||'off']+'</span><button type="button" id="btnWarmLeave">'+(Net.isHost?'回設定':'離開')+'</button></div>';
+    return}
+  $('strip').innerHTML=Client.players.filter(p=>p.role==='player'&&!p.spect).map(p=>'<div class="lane'+(p.id===ME.id?' me':'')+(p.online?'':' off')+'"><b>'+esc(p.name)+'</b>'+
+    '<div class="track"><div class="fill" style="width:'+pct(p)+'%;background:'+color(p.id)+'"></div></div><span>'+(p.fin?'完成':p.done+'/'+Client.count)+'</span></div>').join('');
+}};
+// 看板
+const Board={
+  open(){show('sBoard');$('bCode').textContent=Net.solo?'單人':Client.code;const gun=Client.mode==='gun';
+    $('bTitle').textContent=gun?'單字槍戰':'打字對戰';$('bPack').textContent=Bank.name(Client.cfg);$('bArena').hidden=!gun;if(gun)Arena.mount($('bArena'),'ring');this.draw()},
+  draw(ranked){
+    if($('sBoard').hidden)return;
+    const ps=Client.players.filter(p=>p.role==='player'&&!p.spect);
+    if(Client.mode==='gun'){
+      const order=ranked?ranked.map(r=>ps.find(p=>p.id===r.id)||r):MODES.gun.rank(ps);
+      $('bInfo').textContent='';
+      $('blanes').style.flex='0 0 auto';
+      $('blanes').innerHTML=order.length?order.map((p,i)=>'<div class="bl'+(p.online===false?' off':'')+'"><span class="rk'+(ranked&&i===0?' win':'')+'">'+(ranked?i+1:'')+'</span><b style="color:'+color(p.id)+'">'+esc(p.name)+'</b>'+
+        '<span class="hp">'+(p.out?'出局':hearts(p.hp))+'<small>'+(p.out?'':'身上 '+(p.nb||0)+' 顆子彈')+'</small></span>'+
+        '<span class="st"><i>開槍 '+p.fired+'</i>解除 '+p.defused+(p.surge?'・子彈快 '+Math.round(p.surge*100)+'%':'')+'</span></div>').join(''):'<div class="bempty">還沒有選手加入。</div>';
+      return;
+    }
+    $('blanes').style.flex='';
+    const order=ranked?ranked.map(r=>ps.find(p=>p.id===r.id)||r):ps;
+    const lead=MODES.race.rank(ps);
+    $('bInfo').textContent=Client.phase==='race'?'共 '+Client.count+' 題':'';
+    $('blanes').innerHTML=order.length?order.map(p=>{const rk=lead.findIndex(x=>x.id===p.id)+1;
+      return '<div class="bl'+(p.online?'':' off')+'"><span class="rk'+(p.fin&&rk===1?' win':'')+'">'+(p.kana||p.fin?rk:'–')+'</span><b style="color:'+color(p.id)+'">'+esc(p.name)+'</b>'+
+        '<div class="track"><div class="fill" style="width:'+pct(p)+'%;background:'+color(p.id)+'"></div></div>'+
+        '<span class="st"><i>'+(p.fin?p.time.toFixed(1)+' 秒':p.done+' / '+Client.count)+'</i>打錯 '+p.miss+'</span></div>'}).join('')
+      :'<div class="bempty">還沒有選手加入。</div>';
+  },
+  countdown(){tick($('bCount'),()=>{})},
+  final(ranked){show('sBoard');Client.players=Client.players.map(p=>{const r=ranked.find(x=>x.id===p.id);return r?Object.assign({},p,r):p});
+    $('bArena').hidden=Client.mode!=='gun';if(Client.mode==='gun')Arena.mount($('bArena'),'ring');
+    $('bTitle').textContent='比賽結果';this.draw(ranked)},
+};
+function tick(el,done){let n=CFG.countdown;el.hidden=false;el.textContent=n;
+  const t=setInterval(()=>{n--;if(n<=0){clearInterval(t);el.hidden=true;done()}else el.textContent=n},1000);return t}
+
+const hearts=n=>n>6?'♥×'+n:'♥'.repeat(Math.max(0,n));
+// ───── Arena：槍戰的場地（小人＋飛行中的子彈）。選手畫面上方用一排，看板用四個角落 ─────
+const Arena={
+  el:null,layout:'row',pos:{},
+  spots(n){
+    if(this.layout==='row')return Array.from({length:n},(_,i)=>[(i+.5)/n*100,50]);
+    return n<=2?[[22,50],[78,50]]:n===3?[[50,24],[20,76],[80,76]]:[[22,26],[78,26],[22,76],[78,76]];
+  },
+  mount(el,layout){this.el=el;this.layout=layout;el.innerHTML='<div class="avs"></div>';this.sync();
+    for(const k in Client.bullets)this.shot(Client.bullets[k])},
+  sync(){
+    const el=this.el;if(!el||el.offsetParent===null)return;
+    const ps=Client.players.filter(p=>p.role==='player'&&!p.spect),sp=this.spots(ps.length);this.pos={};
+    el.querySelector('.avs').innerHTML=ps.map((p,i)=>{this.pos[p.id]=sp[i];
+      return '<div class="av'+(p.id===ME.id?' me':'')+(p.out?' out':'')+(p.online?'':' off')+'" data-p="'+p.id+'" style="left:'+sp[i][0]+'%;top:'+sp[i][1]+'%;--c:'+color(p.id)+'">'+
+        '<svg viewBox="0 0 40 44" aria-hidden="true"><circle cx="18" cy="10" r="8"/><rect x="8" y="19" width="20" height="22" rx="7"/><rect x="26" y="24" width="13" height="4.5" rx="2"/></svg>'+
+        '<b>'+esc(p.name)+'</b><i>'+(p.out?'出局':hearts(p.hp))+'</i></div>'}).join('');
+  },
+  shot(b){
+    const el=this.el;if(!el||el.offsetParent===null)return;const a=this.pos[b.from],z=this.pos[b.to];if(!a||!z)return;
+    const left=Math.max(0,(b.end-performance.now())/1000),done=b.dur>0?1-left/b.dur:1;
+    const x=a[0]+(z[0]-a[0])*done,y=a[1]+(z[1]-a[1])*done;      // 中途才看到的子彈，從目前飛到的位置開始
+    const d=document.createElement('div');d.className='shot';d.dataset.b=b.id;d.style.cssText='left:'+x+'%;top:'+y+'%;--c:'+color(b.from);
+    el.appendChild(d);void d.offsetWidth;d.style.transition='left '+left+'s linear,top '+left+'s linear';d.style.left=z[0]+'%';d.style.top=z[1]+'%';
+  },
+  remove(id){if(!this.el)return;const d=this.el.querySelector('[data-b="'+id+'"]');if(d)d.remove()},
+  flash(pid,cls){if(!this.el)return;const a=this.el.querySelector('[data-p="'+pid+'"]');if(!a)return;a.classList.remove(cls);void a.offsetWidth;a.classList.add(cls);setTimeout(()=>a.classList.remove(cls),480)},
+};
+
+// ───── Gun：槍戰的選手畫面。同時最多 3 顆子彈 + 1 題攻擊題，各自記住打到哪裡 ─────
+const Gun={
+  pool:[],queue:[],cards:[],active:null,manual:false,on:false,cd:0,
+  mk(kind,item,extra){const tokens=parse(item.jp),R=tokens.map(t=>t.read).join('');
+    return Object.assign({kind,item,tokens,R,T:hira(R),typed:[],buf:'',swallow:false},extra||{})},
+  nextAttack(){if(!this.queue.length)this.queue=shuffle(this.pool);return this.mk('a',this.queue.pop())},
+  begin(pool){
+    this.pool=pool;this.queue=shuffle(pool);this.cards=[this.nextAttack()];this.inc=[];this.active=null;this.manual=false;this.on=false;this.prev=null;
+    Typing.stop();
+    show('sGun');$('selKb').value=Typing.kb;
+    Typing.buildKb();Arena.mount($('gArena'),'row');this.pick();this.draw();this.state();Aid.apply();
+    clearInterval(this.cd);this.cd=tick($('gCount'),()=>{this.on=true;showHint()});
+  },
+  stop(){this.on=false;clearInterval(this.cd);$('gCount').hidden=true},
+  me(){return Client.players.find(p=>p.id===ME.id)},
+  state(){                                   // 主機送來新狀態：更新加速顯示；自己出局就改看看板
+    if($('sGun').hidden)return;const me=this.me();
+    if(me&&me.out){this.stop();Board.open();return}
+    const up=me?Math.round((me.surge+me.boost)*100):0;$('qNo').textContent=up?'我射出的子彈快 '+up+'%':'';
+  },
+  bullets(){return this.cards.filter(c=>c.kind==='b')},
+  inc:[],                                   // 單純規則：身上的子彈只是倒數計時，不帶題目
+  addBullet(m){
+    if($('sGun').hidden)return;
+    if(this.simple()){                       // 單純規則：題目不變，只多一個倒數
+      this.inc.push({id:m.id,from:m.from,dur:m.dur,end:performance.now()+m.dur*1000});
+      this.inc.sort((a,b)=>a.end-b.end);this.draw();return}
+    const c=this.mk('b',m.item,{id:m.id,from:m.from,dur:m.dur,end:performance.now()+m.dur*1000});
+    this.cards.push(c);
+    // 子彈在上（快到的排最上面），攻擊題永遠在最下面
+    this.cards.sort((a,b)=>(a.kind==='a')-(b.kind==='a')||a.end-b.end);
+    this.pick();this.draw();
+  },
+  prev:null,prevUntil:0,
+  graceCard(){const p=this.prev;return p&&p!==this.active&&performance.now()<this.prevUntil&&this.cards.includes(p)?p:null},
+  removeBullet(id){const k=this.inc.findIndex(x=>x.id===id);if(k>=0){this.inc.splice(k,1);this.draw();return}
+    const i=this.cards.findIndex(c=>c.id===id);if(i<0)return;
+    if(this.cards[i]===this.active){this.active=null;this.manual=false}
+    this.cards.splice(i,1);this.pick();this.draw()},
+  // 自動選題：手上有題目就不換（不管打了幾個字），避免剛按下去的鍵被新來的子彈吃掉。
+  // 只有手上那題打完或消失了，才選下一題：有子彈就選最上面的，沒有才是攻擊題。想先打別張可以直接點。
+  pick(){
+    if(this.active&&this.cards.includes(this.active))return;
+    this.active=this.cards[0];this.manual=false;
+  },
+  simple(){return (Client.cfg||{}).rule!=='complex'},
+  choose(i){const c=this.cards[i];if(this.simple()||!c||c===this.active)return;this.active=c;this.manual=true;this.draw()},
+  hurt(){const s=$('gstage');s.classList.remove('hurt');void s.offsetWidth;s.classList.add('hurt')},
+  ok(c){const n=c.typed.length;return n&&c.typed[n-1]!==c.T[n-1]?n-1:n},
+  draw(){
+    if($('sGun').hidden)return;const now=performance.now(),simple=this.simple();
+    $('cards').classList.toggle('one',simple);
+    // 單純規則：身上的子彈畫成一排會倒數的小標記（顏色是開槍的人）
+    const marks=simple?this.inc.map(x=>{const left=Math.max(0,(x.end-now)/1000);
+      return '<span class="pend1" style="--c:'+color(x.from)+'"><i></i><span class="tm" style="--w:'+Math.min(100,left/x.dur*100)+'%;--d:'+left+'s"></span></span>'}).join(''):'';
+    $('cards').innerHTML=marks+this.cards.map((c,i)=>{
+      const on=c===this.active,atk=c.kind==='a',who=atk?null:Client.players.find(p=>p.id===c.from);
+      const left=atk?0:Math.max(0,(c.end-now)/1000);
+      if(simple&&!on)return '';
+      const tm=atk?'':'<span class="tm" style="--w:'+Math.min(100,left/c.dur*100)+'%;--d:'+left+'s"></span>';
+      const label=simple?(this.inc.length?'打完這題　解除 1 顆子彈（身上 '+this.inc.length+' 顆）':'打完這題　向所有對手開槍'):atk?'攻擊題　打完就向所有對手開槍':'子彈　來自 '+esc(who?who.name:'對手');
+      const style=atk?'':' style="--c:'+color(c.from)+'"';
+      if(!on){const done=[...c.R].slice(0,this.ok(c)).join('');
+        return '<button type="button" class="gc'+(atk?' atk':'')+'" data-i="'+i+'"'+style+'><span class="mini" lang="ja">'+esc(c.tokens.map(t=>t.text).join(''))+
+          (done?'<u>'+esc(done)+'</u>':'')+'<small>'+esc(c.item.zh)+'</small></span>'+tm+'</button>'}
+      const n=c.typed.length,ok=this.ok(c);let h='';
+      for(let k=0;k<c.T.length;k++){
+        if(k<n){const ch=/[ァ-ヶ]/.test(c.R[k])?kata(c.typed[k]):c.typed[k];h+='<span class="'+(k<ok?'ok':'pend')+'">'+ch+'</span>'}
+        else if(k===n&&c.buf)h+='<span class="buf">'+c.buf+'</span>';
+        else h+='<span class="'+(k===n?'next':'')+'">&nbsp;</span>';
+      }
+      return '<div class="gc on'+(atk?' atk':'')+(simple&&this.inc.length?' danger':'')+'" data-i="'+i+'"'+style+'><div class="lb"><span>'+label+'</span></div>'+
+        '<div class="sent" lang="ja">'+c.tokens.map(t=>'<span class="tok'+(t.g?' g':'')+'">'+(t.ruby?'<ruby>'+esc(t.text)+'<rt>'+esc(t.ruby)+'</rt></ruby>':esc(t.text))+'</span>').join('')+'</div>'+
+        '<div class="zh">'+esc(c.item.zh)+'</div><div class="typed" lang="ja">'+h+'</div>'+tm+'</div>';
+    }).join('');
+    showHint();
+  },
+  target(){const c=this.active;return this.on&&c?{T:c.T,typed:c.typed,buf:c.buf}:null},
+  wrong(){const s=$('cards');s.classList.remove('shake');void s.offsetWidth;s.classList.add('shake')},
+  // 把一個鍵試著放到某張卡上；放得進去回傳 true
+  tryKana(c,ch){const n=c.typed.length;
+    if((n&&c.typed[n-1]!==c.T[n-1])||n>=c.T.length||base(ch)!==base(c.T[n]))return false;
+    c.typed.push(ch);return true},
+  tryRoman(c,l){const n=c.typed.length;if(n>=c.T.length)return false;
+    if(c.swallow&&!c.buf&&(l==='n'||l==="'")){c.swallow=false;return true}
+    const cs=cands(c.T,n).filter(x=>x.r.startsWith(c.buf+l));
+    if(!cs.length)return false;
+    c.swallow=false;c.buf+=l;const ex=cs.find(x=>x.r===c.buf);
+    if(ex){for(let i=0;i<ex.len;i++)c.typed.push(c.T[n+i]);c.buf='';c.swallow=!!ex.nflag}
+    return true},
+  feed(fn){const c=this.active;if(!this.on||!c)return;
+    if(fn(c)){this.after(c);return}
+    const p=this.graceCard();if(p&&fn(p)){this.after(p);return}
+    this.wrong()},
+  kana(ch){this.feed(c=>this.tryKana(c,ch))},
+  roman(l){this.feed(c=>this.tryRoman(c,l))},
+  mod(){const c=this.active;if(!this.on||!c)return;const i=c.typed.length-1;if(i<0)return;const g=CYC[c.typed[i]];if(!g)return;
+    c.typed[i]=g[(g.indexOf(c.typed[i])+1)%g.length];this.after(c)},
+  del(){const c=this.active;if(!this.on||!c)return;if(c.buf)c.buf=c.buf.slice(0,-1);else c.typed.pop();c.swallow=false;this.draw()},
+  render(){this.draw()},
+  after(c){
+    if(c.typed.length===c.T.length&&this.ok(c)===c.T.length){
+      const i=this.cards.indexOf(c);
+      // 先改好自己的卡片再通知主機（主機就是自己時，回覆會立刻回來，順序反了會多刪一張）
+      if(c===this.active){this.active=null;this.manual=false}
+      if(c===this.prev)this.prev=null;
+      if(this.simple()){                     // 單純規則：打完一題，身上有子彈就解掉最快到的那顆，沒有子彈才算開槍
+        const hit=this.inc.shift();this.cards[i]=this.nextAttack();this.pick();
+        Net.toHost(hit?{t:'defuse',id:hit.id}:{t:'fire',item:c.item});this.draw();return}
+      if(c.kind==='a'){this.cards[i]=this.nextAttack();this.pick();Net.toHost({t:'fire',item:c.item})}
+      else{this.cards.splice(i,1);this.pick();Net.toHost({t:'defuse',id:c.id})}
+    }
+    this.draw();
+  },
+};
+$('cards').addEventListener('click',e=>{const b=e.target.closest('.gc');if(b)Gun.choose(+b.dataset.i)});
+const IN=()=>Client.mode==='gun'&&!$('sGun').hidden?Gun:Typing;      // 鍵盤現在要送給誰
+
+// ───── Typing：選手的打字畫面 ─────
+const Typing={
+  items:[],idx:0,tokens:[],R:'',T:'',typed:[],buf:'',swallow:false,active:false,t0:0,doneKana:0,miss:0,cd:0,sendT:0,
+  kb:store.get('kb','rom'),warm:false,
+  begin(items){
+    this.items=items;this.idx=0;this.doneKana=0;this.miss=0;this.active=false;this.warm=false;
+    show('sRace');$('selKb').value=this.kb;
+    this.buildKb();this.load();Strip.draw();Aid.apply();
+    clearInterval(this.cd);this.cd=tick($('count'),()=>{this.active=true;this.t0=performance.now();showHint()});
+  },
+  stop(){this.active=false;this.warm=false;clearInterval(this.cd);$('count').hidden=true},
+  // 熱身房：房主範圍內的題目一直練，不計時、不回報
+  warmKey:'',
+  warmup(){
+    const key=Bank.key(Client.cfg)+'/'+(Client.cfg||{}).src;
+    if(this.warm&&!$('sRace').hidden&&this.warmKey!==key){      // 房主改了範圍：換新題目，但正在打的這題先打完（不在打字途中換題）
+      this.items=[this.items[this.idx]].concat(Bank.warm(Client.cfg));this.idx=0;this.warmKey=key}
+    if(!(this.warm&&!$('sRace').hidden)){
+      this.items=Bank.warm(Client.cfg);this.warmKey=key;
+      this.idx=0;this.doneKana=0;this.miss=0;this.warm=true;this.active=true;clearInterval(this.cd);$('count').hidden=true;
+      show('sRace');$('selKb').value=this.kb;this.buildKb();this.load();
+    }
+    Strip.draw();Aid.apply();
+  },
+  target(){return this.active?{T:this.T,typed:this.typed,buf:this.buf}:null},
+  load(){
+    const it=this.items[this.idx];this.tokens=parse(it.jp);this.R=this.tokens.map(t=>t.read).join('');this.T=hira(this.R);this.typed=[];this.buf='';this.swallow=false;
+    $('tag').textContent=it.tag;$('zh').textContent=it.zh;$('qNo').textContent=this.warm?'':'第 '+(this.idx+1)+' / '+this.items.length+' 題';
+    $('sent').innerHTML=this.tokens.map(t=>'<span class="tok'+(t.g?' g':'')+'">'+(t.ruby?'<ruby>'+esc(t.text)+'<rt>'+esc(t.ruby)+'</rt></ruby>':esc(t.text))+'</span>').join('');
+    this.render();
+  },
+  okCount(){const n=this.typed.length;return n&&this.typed[n-1]!==this.T[n-1]?n-1:n},
+  render(){
+    const n=this.typed.length,ok=this.okCount(),T=this.T;let h='';
+    for(let i=0;i<T.length;i++){
+      if(i<n){const c=/[ァ-ヶ]/.test(this.R[i])?kata(this.typed[i]):this.typed[i];h+='<span class="'+(i<ok?'ok':'pend')+'">'+c+'</span>'}
+      else if(i===n&&this.buf)h+='<span class="buf">'+this.buf+'</span>';
+      else h+='<span class="'+(i===n?'next':'')+'">&nbsp;</span>';
+    }
+    $('typed').innerHTML=h;
+    let pos=0,cur=false;[...$('sent').children].forEach((el,i)=>{const len=this.tokens[i].read.length;pos+=len;const d=ok>=pos&&ok>0;
+      el.classList.toggle('done',d);const c=!d&&!cur&&len>0;if(c)cur=true;el.classList.toggle('cur',c)});
+    showHint();
+  },
+  wrong(){this.miss++;const s=$('stage');s.classList.remove('shake');void s.offsetWidth;s.classList.add('shake');this.report()},
+  kana(ch){
+    if(!this.active)return;const n=this.typed.length,T=this.T;
+    if(n&&this.typed[n-1]!==T[n-1]){this.wrong();return}
+    if(n>=T.length)return;
+    if(base(ch)!==base(T[n])){this.wrong();return}
+    this.typed.push(ch);this.after();
+  },
+  mod(){if(!this.active)return;const i=this.typed.length-1;if(i<0)return;const c=CYC[this.typed[i]];if(!c)return;
+    this.typed[i]=c[(c.indexOf(this.typed[i])+1)%c.length];this.after()},
+  roman(l){
+    if(!this.active)return;const n=this.typed.length,T=this.T;if(n>=T.length)return;
+    if(this.swallow&&!this.buf&&(l==='n'||l==="'")){this.swallow=false;return}
+    this.swallow=false;
+    const cs=cands(T,n).filter(x=>x.r.startsWith(this.buf+l));
+    if(!cs.length){this.wrong();return}
+    this.buf+=l;const ex=cs.find(x=>x.r===this.buf);
+    if(ex){for(let i=0;i<ex.len;i++)this.typed.push(T[n+i]);this.buf='';this.swallow=!!ex.nflag}
+    this.after();
+  },
+  del(){if(!this.active)return;if(this.buf)this.buf=this.buf.slice(0,-1);else this.typed.pop();this.swallow=false;this.render()},
+  after(){
+    this.render();
+    if(this.typed.length===this.T.length&&this.okCount()===this.T.length){
+      this.doneKana+=this.T.length;this.idx++;
+      if(this.warm&&this.idx>=this.items.length){this.items=shuffle(this.items);this.idx=0}
+      if(this.idx>=this.items.length){this.active=false;this.report(true);$('qNo').textContent='完成！';$('tag').textContent='';$('zh').textContent='等其他人打完…';
+        $('sent').innerHTML='<span class="wait">你打完了</span>';$('typed').innerHTML='';return}
+      this.load();this.report(false,true);
+    }else this.report();
+  },
+  // 把進度送給主機；一般的按鍵最多每 150ms 送一次，換題和完成則立刻送
+  report(fin,now){
+    if(this.warm)return;
+    const send=()=>Net.toHost({t:'prog',kana:this.doneKana+(fin?0:this.okCount()),done:this.idx,miss:this.miss,fin:!!fin,time:fin?(performance.now()-this.t0)/1000:0});
+    clearTimeout(this.sendT);
+    if(fin||now)send();else this.sendT=setTimeout(send,150);
+  },
+  buildKb(){
+    const kb=$('kb'),t=this.kb;kb.className='kb '+t;
+    const F=[['あ','あいうえお'],['か','かきくけこ'],['さ','さしすせそ'],['た','たちつてと'],['な','なにぬねの'],['は','はひふへほ'],['ま','まみむめも'],['や','や　ゆ　よ'],['ら','らりるれろ'],['わ','わをんー　']];
+    const fk=i=>'<button type="button" class="key" data-f="'+F[i][1]+'">'+F[i][0]+'<small>'+F[i][1].slice(1).replace(/　/g,'')+'</small></button>';
+    if(t==='rom'){const row=s=>[...s].map(c=>'<button type="button" class="key" data-r="'+c+'">'+c+'</button>').join('');
+      kb.innerHTML='<div class="rw">'+row('qwertyuiop')+'</div><div class="rw r2">'+row('asdfghjkl')+'</div><div class="rw"><button type="button" class="key fn w" data-r="-">ー</button>'+row('zxcvbnm')+
+        '<button type="button" class="key fn w" data-a="del" aria-label="刪除">⌫</button></div>';
+    }else if(t==='k12'){
+      kb.innerHTML='<button type="button" class="key fn tall" data-a="mod">゛゜小</button>'+fk(0)+fk(1)+fk(2)+'<button type="button" class="key fn tall" data-a="del" aria-label="刪除">⌫</button>'+fk(3)+fk(4)+fk(5)+
+        '<button type="button" class="key fn tall" data-c="ー">ー</button>'+fk(6)+fk(7)+fk(8)+'<button type="button" class="key fn tall" data-a="del" aria-label="刪除">⌫</button>'+
+        '<button type="button" class="key fn" data-a="mod">゛゜<small>小</small></button>'+fk(9)+'<button type="button" class="key fn" data-c="ー">ー</button>';
+    }else{
+      const rows=['わらやまはなたさかあ','をり⌫みひにちしきい','んるゆむふぬつすくう','ーれ⌫めへねてせけえ','゛ろよもほのとそこお'];
+      kb.innerHTML=rows.map(r=>[...r].map(c=>c==='⌫'?'<button type="button" class="key fn" data-a="del" aria-label="刪除">⌫</button>':
+        c==='゛'?'<button type="button" class="key fn" data-a="mod">゛゜小</button>':'<button type="button" class="key" data-c="'+c+'">'+c+'</button>').join('')).join('');
+    }
+  },
+};
+let act=null;const pop=$('pop');
+function popShow(){const r=act.el.getBoundingClientRect(),w=Math.max(r.width,48),h=r.height,f=act.f,o=[null,2,null,1,0,3,null,4,null];
+  pop.innerHTML=o.map(i=>i===null||!f[i].trim()?'<span class="e"></span>':'<span'+(i===act.dir?' class="on"':'')+'>'+f[i]+'</span>').join('');
+  pop.style.cssText='display:grid;width:'+w*3+'px;left:'+Math.min(Math.max(r.left+r.width/2-w*1.5,2),innerWidth-w*3-2)+'px;top:'+(r.top-h)+'px';
+  [...pop.children].forEach(s=>s.style.height=h+'px')}
+$('kb').addEventListener('pointerdown',e=>{const k=e.target.closest('.key');if(!k)return;e.preventDefault();
+  if(k.dataset.f){act={el:k,f:[...k.dataset.f],x:e.clientX,y:e.clientY,dir:0,id:e.pointerId};try{k.setPointerCapture(e.pointerId)}catch(_){}k.classList.add('down');popShow();return}
+  k.classList.add('down');setTimeout(()=>k.classList.remove('down'),110);
+  if(k.dataset.r)IN().roman(k.dataset.r);else if(k.dataset.c)IN().kana(k.dataset.c);else if(k.dataset.a==='del')IN().del();else if(k.dataset.a==='mod')IN().mod()});
+$('kb').addEventListener('pointermove',e=>{if(!act||e.pointerId!==act.id)return;const dx=e.clientX-act.x,dy=e.clientY-act.y;let d=0;
+  if(Math.hypot(dx,dy)>16)d=Math.abs(dx)>Math.abs(dy)?(dx<0?1:3):(dy<0?2:4);if(d!==act.dir){act.dir=d;popShow()}});
+function flickEnd(e,cancel){if(!act||e.pointerId!==act.id)return;const ch=act.f[act.dir];act.el.classList.remove('down');pop.style.display='none';act=null;if(!cancel&&ch&&ch.trim())IN().kana(ch)}
+$('kb').addEventListener('pointerup',e=>flickEnd(e,false));$('kb').addEventListener('pointercancel',e=>flickEnd(e,true));$('kb').addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  if(($('sRace').hidden&&$('sGun').hidden)||e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='SELECT')return;
+  if(e.key==='Backspace'){e.preventDefault();IN().del();return}
+  if(Typing.kb==='rom'&&/^[a-zA-Z'\-]$/.test(e.key)){e.preventDefault();IN().roman(e.key.toLowerCase())}});
+$('cFuri').addEventListener('click',()=>Aid.toggle('furi'));
+$('cHint').addEventListener('click',()=>Aid.toggle('hint'));
+$('strip').addEventListener('click',e=>{if(e.target.id!=='btnWarmLeave')return;
+  if(Net.isHost){Client.hostWarm=false;Typing.stop();Client.lobby()}else leave('')});
+$('botLv').addEventListener('input',()=>{const n=+$('botLv').value;Host.setBotLevel(n);$('botLvTxt').textContent=Host.BOT_LV[n][0]});
+$('btnHostWarm').addEventListener('click',()=>{Client.hostWarm=true;Client.lobby()});
+$('selKb').addEventListener('change',()=>{Typing.kb=$('selKb').value;store.set('kb',Typing.kb);Typing.buf='';if(Gun.active)Gun.active.buf='';Typing.buildKb();
+  if(IN()===Gun)Gun.draw();else Typing.render();showHint();$('selKb').blur()});
+
+// ───── 主機控制列與首頁按鈕 ─────
+function hostbar(){
+  const on=Net.isHost&&Client.phase!=='home';$('hostbar').hidden=!on;if(!on)return;
+  const ph=Client.phase,n=Client.players.filter(p=>p.role==='player'&&p.online).length,empty=ph==='lobby'&&!Bank.ok(Client.cfg);
+  $('hbInfo').textContent=(Net.solo?'單人試玩':'房號 '+Client.code)+'・選手 '+n+' 人';
+  $('hbStart').hidden=ph!=='lobby';$('hbStart').disabled=n<1||empty;$('hbEnd').hidden=ph!=='race';$('hbBack').hidden=ph!=='result';
+}
+$('hbStart').addEventListener('click',()=>Host.start());
+$('btnStart2').addEventListener('click',()=>Host.start());
+$('hbEnd').addEventListener('click',()=>Host.end());
+$('hbBack').addEventListener('click',()=>Host.back());
+['cfgSrc','cfgCount','cfgMode'].forEach(id=>$(id).addEventListener('change',()=>Host.setCfg(id==='cfgSrc'?'src':id==='cfgCount'?'count':'mode',id==='cfgCount'?+$(id).value:$(id).value)));
+[['gRule','rule'],['gHp','hp',1],['gFly','fly',1],['gFull','full'],['gBsrc','bsrc'],['gBonus','bonus'],['gMin','min',1]].forEach(([id,k,num])=>$(id).addEventListener('change',()=>Host.setCfg(k,num?+$(id).value:$(id).value)));
+$('cfgMode').innerHTML=Object.keys(MODES).filter(k=>MODES[k].ready).map(k=>'<option value="'+k+'">'+MODES[k].name+'</option>').join('');     // 只列出做好的玩法
+[['aFuri','furi'],['aHint','hint'],['gStep','step',1]].forEach(([id,k,num])=>$(id).addEventListener('change',()=>Host.setCfg(k,num?+$(id).value:$(id).value)));
+
+function say(t){$('homeMsg').textContent=t||''}
+function leave(msg){Typing.stop();Gun.stop();if(Host.room)Host.clearBullets();Host.stopBots();clearTimeout(Host.timer);Host.room=null;Host.bots=[];Net.close();Client.phase='home';Client.hostWarm=false;Client.players=[];show('sHome');hostbar();say(msg||'');busy(false)}
+function busy(b){['btnJoin','btnHostPlay','btnHostBoard','btnSolo'].forEach(id=>$(id).disabled=b)}
+function myName(){const n=$('inName').value.trim().slice(0,8);store.set('name',n);return n||'玩家'}
+const ERR={'peer-unavailable':'找不到這個房號。請確認號碼，或請主機重新開房。','unavailable-id':'','network':'連不上連線伺服器。請檢查網路後再試。',
+  'server-error':'連線伺服器暫時沒有回應，請稍後再試。','socket-error':'連線伺服器暫時沒有回應，請稍後再試。','browser-incompatible':'這個瀏覽器不支援連線對戰，請換 Chrome 或 Safari。'};
+function needNet(){if(Net.available())return true;say('連線元件沒有載入，沒辦法連線對戰（可能是這個網頁環境擋住了）。「單人試玩」仍然可以用。');return false}
+function hostRoom(role,tries){
+  if(!needNet())return;
+  if(!Bank.local){say('課程還沒載入，沒辦法開房。');return}
+  busy(true);say('正在開房間…');ME.role=role;ME.name=role==='board'?'看板':myName();
+  const code=String(1000+Math.floor(Math.random()*9000));
+  Net.host(code,()=>{say('');Host.open(code);Net.toHost({t:'hello',name:ME.name,role,token:ME.token})},
+    type=>{if(type==='unavailable-id'&&(tries||0)<5){Net.close();hostRoom(role,(tries||0)+1);return}
+      if(Client.phase==='home')leave(ERR[type]||'開房間失敗（'+type+'）。請再試一次。')});
+}
+$('btnHostPlay').addEventListener('click',()=>hostRoom('player'));
+$('btnHostBoard').addEventListener('click',()=>hostRoom('board'));
+$('btnJoin').addEventListener('click',()=>{
+  const code=$('inCode').value.replace(/\D/g,'');
+  if(code.length!==4){say('請輸入 4 位數的房號。');return}
+  if(!needNet())return;
+  busy(true);say('正在加入…');ME.role=$('selJoinRole').value;ME.name=ME.role==='board'?'看板':myName();
+  const to=setTimeout(()=>{if(Client.phase==='home')leave('加入逾時。請確認房號，並確定主機還開著那個網頁。')},12000);
+  Net.join(code,()=>{clearTimeout(to);say('');Net.toHost({t:'hello',name:ME.name,role:ME.role,token:ME.token})},
+    type=>{clearTimeout(to);if(Client.phase==='home')leave(ERR[type]||'加入失敗（'+type+'）。請再試一次。')});
+});
+$('btnSolo').addEventListener('click',()=>{
+  if(!Bank.local){say('課程還沒載入，沒辦法試玩。');return}
+  say('');ME.role='player';ME.name=myName();Net.local();Host.open('solo');Host.bots=[];
+  Net.toHost({t:'hello',name:ME.name,role:'player',token:ME.token});
+  Host.addBot('電腦・慢',1.4,0.3);Host.addBot('電腦・中',2.2,0.45);Host.addBot('電腦・難',3.2,0.6);Host.setBotLevel(Host.botLevel);      // 名稱、打字速度、解子彈成功率
+});
+$('btnLeave').addEventListener('click',()=>leave(''));
+$('btnLeave2').addEventListener('click',()=>leave(''));
+$('inCode').addEventListener('input',()=>{$('inCode').value=$('inCode').value.replace(/\D/g,'').slice(0,4)});
+
+// 關掉分頁時主動通知，其他人才不用等很久才發現有人離線
+window.addEventListener('pagehide',()=>{try{if(Net.peer)Net.peer.destroy()}catch(_){}});
+$('btnHelp').addEventListener('click',()=>{$('help').hidden=false;$('btnHelpX').focus()});
+['btnHelpX','btnHelpOk'].forEach(id=>$(id).addEventListener('click',()=>{$('help').hidden=true;$('btnHelp').focus()}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('help').hidden)$('help').hidden=true});
+function start(){$('inName').value=store.get('name','');show('sHome');hostbar();Bank.init()}
+</script>
+<script src="js/battle/bank.js"></script>
+<script>start();</script>
+</body>
+</html>
